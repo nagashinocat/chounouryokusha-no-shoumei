@@ -1,5 +1,6 @@
 import { createStage } from './scene/stage.js';
 import { createCards } from './scene/cards.js';
+import { createAudience } from './scene/audience.js';
 import { SYMBOLS } from './config.js';
 
 const params = new URLSearchParams(location.search);
@@ -17,12 +18,21 @@ function litFractionOf(canvas) {
   return lit / (80 * 160);
 }
 
+function pixelsOf(canvas) {
+  const c = document.createElement('canvas'); c.width = 60; c.height = 130;
+  const g = c.getContext('2d'); g.drawImage(canvas, 0, 0, 60, 130);
+  return Array.from(g.getImageData(0, 0, 60, 130).data);
+}
+
 async function boot() {
   const testMode = params.get('test');
   const stage = createStage(document.getElementById('gl'), { preserve: !!testMode });
   if (!stage) { notice('この端末では遊べません。<br>3D表示(WebGL)に対応したブラウザで開いてください。'); return; }
   const cards = createCards(stage);
-  window.__debug = { stage, cards, litFraction: () => litFractionOf(stage.renderer.domElement), cardScreenPos: (i) => cards.screenPos(i) };
+  const audience = createAudience(stage);
+  audience.setBelievers(4, { animate: false });
+  window.__debug = { stage, cards, audience,
+    setBelievers: (n) => audience.setBelievers(n), pixels: () => pixelsOf(stage.renderer.domElement), litFraction: () => litFractionOf(stage.renderer.domElement), cardScreenPos: (i) => cards.screenPos(i) };
   if (testMode === 'scene') {
     window.__debug.picks = [];
     cards.onPick((i) => window.__debug.picks.push(i));
@@ -34,6 +44,6 @@ async function boot() {
     return;
   }
   const { startGame } = await import('./app.js');
-  startGame({ stage, cards, ui, params });
+  startGame({ stage, cards, audience, ui, params });
 }
 boot();

@@ -45,10 +45,10 @@ export function createStage(canvas, { preserve = false } = {}) {
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x000000);
-  scene.fog = new THREE.Fog(0x000000, 6, 22);
+  scene.fog = new THREE.Fog(0x000000, 7, 30);
 
   const camera = new THREE.PerspectiveCamera(50, 1, 0.05, 2000);
-  const home = { pos: new THREE.Vector3(0, 2.25, 1.5), target: new THREE.Vector3(0, 0.95, -1.0) };
+  const home = { pos: new THREE.Vector3(0, 2.3, 1.5), target: new THREE.Vector3(0, 1.3, -1.4) };
   camera.position.copy(home.pos);
   const lookTarget = home.target.clone();
   camera.lookAt(lookTarget);
@@ -90,6 +90,8 @@ export function createStage(canvas, { preserve = false } = {}) {
 
   // 照明：真上のスポットライトひとつ＋ごく薄い環境光
   const ambient = new THREE.AmbientLight(0x30324a, 0.35); scene.add(ambient);
+  // 観客席をうっすら照らす冷たい光
+  const fill = new THREE.DirectionalLight(0x9fb0d0, 0.55); fill.position.set(0, 4, 3); scene.add(fill);
   const spot = new THREE.SpotLight(0xfff1d6, 60, 12, Math.PI / 7.5, 0.45, 1.6);
   spot.position.set(0, 5.6, -0.1); spot.target.position.set(0, 0.75, -0.1);
   spot.castShadow = true; spot.shadow.mapSize.set(1024, 1024); spot.shadow.bias = -0.0005;
@@ -102,12 +104,12 @@ export function createStage(canvas, { preserve = false } = {}) {
   const monCanvas = document.createElement('canvas'); monCanvas.width = 512; monCanvas.height = 320;
   const monTex = new THREE.CanvasTexture(monCanvas); monTex.colorSpace = THREE.SRGBColorSpace;
   const monitor = new THREE.Group();
-  const bezel = new THREE.Mesh(new THREE.BoxGeometry(1.7, 1.1, 0.08), new THREE.MeshStandardMaterial({ color: 0x080808, roughness: 0.4, metalness: 0.5 }));
-  const screen = new THREE.Mesh(new THREE.PlaneGeometry(1.58, 0.99), new THREE.MeshBasicMaterial({ map: monTex, toneMapped: false }));
+  const bezel = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.92, 0.08), new THREE.MeshStandardMaterial({ color: 0x080808, roughness: 0.4, metalness: 0.5 }));
+  const screen = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 0.81), new THREE.MeshBasicMaterial({ map: monTex, toneMapped: false }));
   screen.position.z = 0.045; monitor.add(bezel, screen);
-  monitor.position.set(0, 1.78, -2.4); monitor.lookAt(0, 2.25, 1.5);
+  monitor.position.set(0, 2.05, -2.3); monitor.lookAt(0, 2.3, 1.5);
   scene.add(monitor);
-  const monGlow = new THREE.PointLight(0xff3344, 2.2, 5, 1.8); monGlow.position.set(0, 1.7, -2.0); scene.add(monGlow);
+  const monGlow = new THREE.PointLight(0xff3344, 0.7, 3.5, 2); monGlow.position.set(0, 1.7, -2.0); scene.add(monGlow);
   let monSymbol = null, monFlash = 0;
   function drawMonitor(t = 0) {
     const g = monCanvas.getContext('2d');
@@ -133,7 +135,7 @@ export function createStage(canvas, { preserve = false } = {}) {
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     // 縦長でもテーブル全体が入るように画角を広げる
-    camera.fov = w / h < 0.62 ? 58 : 46;
+    camera.fov = w / h < 0.62 ? 66 : 50;
     camera.updateProjectionMatrix();
   }
   window.addEventListener('resize', resize); resize();
