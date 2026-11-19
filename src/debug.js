@@ -10,3 +10,10 @@ export function debugMode(params, hostname) {
 export function useSharedCounter(hostname) {
   return !LOCAL.has(hostname);
 }
+
+// 確認用：?power=true|half で挑戦者の能力を決め打ち(手元でだけ)
+export function debugPower(params, hostname) {
+  if (!LOCAL.has(hostname)) return undefined;
+  const p = params.get('power');
+  return p === 'true' || p === 'half' ? p : undefined;
+}

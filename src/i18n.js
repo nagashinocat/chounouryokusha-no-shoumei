@@ -57,6 +57,11 @@ export const DICT = {
     imgVanished: '{n}人目の消えた挑戦者',
     noWebgl: 'この端末では遊べません。<br>3D表示(WebGL)に対応したブラウザで開いてください。',
     mute: '音のオン・オフ',
+    powerTrueIntro: '……この挑戦者は、本物かもしれない。',
+    powerHalfIntro: '……この挑戦者には、少しだけ見えている。',
+    powerTrueResult: '本物の超能力者だった',
+    powerHalfResult: '半超能力者だった',
+    powerShare: '（{p}）',
   },
   en: {
     title: 'Proof of a Psychic',
@@ -115,6 +120,11 @@ export const DICT = {
     imgVanished: 'Vanished challenger No.{n}',
     noWebgl: "This device can't run the game.<br>Please open it in a browser that supports 3D (WebGL).",
     mute: 'Sound on/off',
+    powerTrueIntro: '...This challenger might be the real thing.',
+    powerHalfIntro: '...This challenger can see, just a little.',
+    powerTrueResult: 'Was a true psychic',
+    powerHalfResult: 'Was a half psychic',
+    powerShare: '({p})',
   },
 };
 

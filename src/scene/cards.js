@@ -50,6 +50,28 @@ export function createCards(stage) {
     return mesh;
   });
 
+  // 本物の超能力者・半超能力者にだけ見える、カードの青白い光
+  const glowTex = (() => {
+    const c = document.createElement('canvas'); c.width = 128; c.height = 160;
+    const g = c.getContext('2d'), grd = g.createRadialGradient(64, 80, 6, 64, 80, 78);
+    grd.addColorStop(0, 'rgba(190,225,255,0.95)'); grd.addColorStop(0.55, 'rgba(120,180,255,0.35)'); grd.addColorStop(1, 'rgba(80,140,255,0)');
+    g.fillStyle = grd; g.fillRect(0, 0, 128, 160);
+    return new THREE.CanvasTexture(c);
+  })();
+  const glows = cards.map((card) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(W * 1.7, L * 1.6), new THREE.MeshBasicMaterial({ map: glowTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0 }));
+    m.rotation.x = -Math.PI / 2; m.visible = false; scene.add(m);
+    return m;
+  });
+  let hintSet = [];
+  stage.onFrame((dt, t) => {
+    glows.forEach((m, i) => {
+      if (!m.visible) return;
+      const c = cards[i]; m.position.set(c.position.x, c.position.y + 0.006, c.position.z);
+      m.material.opacity = 0.65 + Math.sin(t * 2.4 + i) * 0.25;
+    });
+  });
+
   const lock = createInputLock();
   let locked = true;
   const pickFns = new Set();
@@ -113,6 +135,8 @@ export function createCards(stage) {
     unfocus(duration = 0.25) { return stage.moveCamera(home.pos, home.target, duration); },
     // 運命の選択用：4枚の上をカメラが回る
     centerOf() { return new THREE.Vector3(0, Y, -0.05); },
+    setHints(indices) { hintSet = [...indices]; glows.forEach((m, i) => { m.visible = hintSet.includes(i); }); },
+    hinted() { return [...hintSet]; },
     hideAll() { cards.forEach((c) => { c.rotation.set(0, 0, 0); c.position.copy(c.userData.home); }); },
     lock() { locked = true; },
     unlock() { lock.release(); locked = false; },

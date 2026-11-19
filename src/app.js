@@ -5,7 +5,7 @@ import { createFlow } from './flow.js';
 import { createHud } from './ui/hud.js';
 import { createScreens } from './ui/screens.js';
 import { createFx } from './scene/fx.js';
-import { debugMode, useSharedCounter } from './debug.js';
+import { debugMode, useSharedCounter, debugPower } from './debug.js';
 import { t } from './i18n.js';
 import { layersForTier } from './audio.js';
 
@@ -24,16 +24,17 @@ export async function startGame({ stage, cards, audience, ui, params, audio = nu
   const rig = debugMode(params, location.hostname);
 
   let fateBanner = null;
+  const powerLine = (c) => (c?.power === 'true' ? [t('powerTrueIntro')] : c?.power === 'half' ? [t('powerHalfIntro')] : []);
   const syncMusic = () => audio?.setLayers?.(layersForTier(audience.tier));
   const view = {
-    async showOpening(text) {
+    async showOpening(text, challenger) {
       hud.show(false);
-      await screens.story([text], t('start'));
+      await screens.story([text, ...powerLine(challenger)], t('start'));
       audio?.unlock(); audio?.bgm(true);
     },
-    async showChallenger(text, label) {
+    async showChallenger(text, label, challenger) {
       hud.show(false);
-      await screens.story([text, label], t('challenge'));
+      await screens.story([text, label, ...powerLine(challenger)], t('challenge'));
       audio?.unlock(); audio?.bgm(true);
     },
     async hud(game) {
@@ -42,16 +43,18 @@ export async function startGame({ stage, cards, audience, ui, params, audio = nu
       refreshTicker();
       syncMusic();
     },
-    async dealRound(symbols, target, correct, { fate }) {
+    async dealRound(symbols, target, correct, { fate, hints = [] }) {
       stage.setMonitorSymbol(target);
       audio?.play('flip');
+      cards.setHints([]);
       await cards.deal(symbols);
+      cards.setHints(hints);
       cards.unlock();
       dbg.awaitingPick = true;
     },
     waitPick() {
       return new Promise((resolve) => {
-        const off = cards.onPick((i) => { off(); dbg.awaitingPick = false; resolve(i); });
+        const off = cards.onPick((i) => { off(); dbg.awaitingPick = false; cards.setHints([]); resolve(i); });
       });
     },
     async fateRound() {
@@ -103,7 +106,7 @@ export async function startGame({ stage, cards, audience, ui, params, audio = nu
     },
   };
 
-  const flow = createFlow({ counter, storage, view, rig, audio, hall });
+  const flow = createFlow({ counter, storage, view, rig, audio, hall, power: debugPower(params, location.hostname) });
   hud.show(false);
   await screens.title(null, {
     storage,

@@ -11,7 +11,13 @@ export const MALE_EN = ['James','John','Robert','Michael','David','William','Ric
 export const FEMALE_EN = ['Mary','Patricia','Jennifer','Linda','Elizabeth','Susan','Jessica','Sarah','Karen','Lisa','Nancy','Betty','Sandra','Ashley','Emily','Donna','Michelle','Carol','Amanda','Laura'];
 export const JOBS_EN = ['office worker','convenience store clerk','civil servant','college student','part-timer','taxi driver','homemaker','fisher','mail carrier','baker','janitor','security guard','nursery teacher','farmer','hairdresser','bank teller','programmer','greengrocer','teacher','truck driver','unemployed'];
 
-export function makeChallenger(number, pick = randomIndex) {
+// 挑戦者ごとの抽選：1/16384 で本物の超能力者、1/8192 で半超能力者
+export function rollPower(roll = randomIndex) {
+  const r = roll(16384);
+  return r === 0 ? 'true' : r <= 2 ? 'half' : null;
+}
+
+export function makeChallenger(number, pick = randomIndex, roll = randomIndex) {
   const en = getLang() === 'en';
   const SN = en ? SURNAMES_EN : SURNAMES, JB = en ? JOBS_EN : JOBS;
   const surname = SN[pick(SN.length)];
@@ -22,7 +28,7 @@ export function makeChallenger(number, pick = randomIndex) {
   const age = 18 + pick(58);
   const name = en ? `${given} ${surname}` : `${surname} ${given}`;
   const label = t('challengerLabel', { no: String(number).padStart(4, '0'), name, age, job });
-  return { number, name, age, job, gender, label };
+  return { number, name, age, job, gender, label, power: rollPower(roll) };
 }
 
 export function gameOverText() {

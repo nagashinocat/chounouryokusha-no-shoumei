@@ -17,11 +17,12 @@ function shuffle(arr, pick) {
 
 // view は描画側の窓口。rig は 'rig'(必ず当たり)/'miss'(必ず外れ)/null。
 // rigFn はテスト用：毎回 'hit' か 'miss' を返す関数
-export function createFlow({ counter, storage, view, pick = randomIndex, rig = null, rigFn = null, audio = null, hall = null }) {
+export function createFlow({ counter, storage, view, pick = randomIndex, rig = null, rigFn = null, audio = null, hall = null, power = undefined }) {
   const sfx = (name) => audio?.play(name);
   return {
     async start() {
       const challenger = makeChallenger(storage.nextChallengerNumber(), pick);
+      if (power !== undefined) challenger.power = power; // テストや確認用に、能力を決め打ちできる
       const first = storage.isFirstVisit();
       const pop = await counter.fetchPopulation();
       if (first) await view.showOpening(t('opening'), challenger);
@@ -35,7 +36,15 @@ export function createFlow({ counter, storage, view, pick = randomIndex, rig = n
         const correct = pick(4);
         const target = symbols[correct];
         if (fate) { sfx('heartbeat'); await view.fateRound(game); }
-        await view.dealRound(symbols, target, correct, { fate });
+        // 本物は正解の1枚が、半超能力者は正解を含む2枚が見える
+        let hints = [];
+        if (challenger.power === 'true') hints = [correct];
+        if (challenger.power === 'half') {
+          const others = [0, 1, 2, 3].filter((i) => i !== correct);
+          const decoy = others[pick(3)];
+          hints = pick(2) ? [correct, decoy] : [decoy, correct];
+        }
+        await view.dealRound(symbols, target, correct, { fate, hints });
         const index = await view.waitPick();
         const hit = rigFn ? rigFn() === 'hit' : rig === 'rig' ? true : rig === 'miss' ? false : rig === 'fatemiss' ? !fate : index === correct;
         const before = game.believers;

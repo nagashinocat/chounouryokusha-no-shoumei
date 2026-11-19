@@ -181,6 +181,7 @@ export function createScreens(ui) {
         <div class="result interactive" data-result>
           <h2>${esc(r.cleared ? t('resultCleared') : t('resultTitle'))}</h2>
           <p class="who">${esc(r.challenger.label)}</p>
+          ${r.challenger.power ? `<p class="power">${esc(t(r.challenger.power === 'true' ? 'powerTrueResult' : 'powerHalfResult'))}</p>` : ''}
           <dl>
             <dt>${esc(t('maxStreak'))}</dt><dd><b class="r-streak">0</b>${esc(t('timesUnit'))}</dd>
             <dt>${esc(t('probability'))}</dt><dd class="r-odds"><b>${esc(r.odds.percentText)}</b></dd>

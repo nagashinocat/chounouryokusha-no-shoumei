@@ -83,3 +83,5 @@ html,body{margin:0;height:100%;background:#000;color:#eee;overflow:hidden;touch-
 .title-screen .title-pop b{display:inline;font-size:17px;color:#ff4b55;letter-spacing:.04em;font-variant-numeric:tabular-nums;font-weight:600}
 .title-screen .title-pop .tp-unit{font-size:11px;margin-left:2px}
 .title-screen.hall .title-pop{display:none}
+
+.result .power{margin:-.4em 0 1em;font-size:14px;letter-spacing:.2em;color:#9fd0ff;text-shadow:0 0 10px #4f9bff}

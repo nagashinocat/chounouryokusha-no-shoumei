@@ -143,3 +143,24 @@ it('a game over never asks for a nickname', async () => {
   await createFlow({ counter: createCounter({ backend, storage }), storage, view, rig: 'miss', pick: () => 0, hall: { fetchNames: async () => [], submit: async () => ({ ok: true }) } }).start();
   expect(view.names()).not.toContain('askNickname');
 });
+
+it('a true psychic sees the correct card; a half psychic sees it among two', async () => {
+  for (const power of ['true', 'half', null]) {
+    const storage = createStorage(mem());
+    const view = fakeView();
+    const backend = { getCount: async () => 0, increment: async () => 1 };
+    let k = 0;
+    const pick = (n) => (k++ % n); // 正解の位置がラウンドごとに変わるように
+    await createFlow({ counter: createCounter({ backend, storage }), storage, view, rig: 'miss', pick, power }).start();
+    const deals = view.calls.filter((c) => c[0] === 'dealRound');
+    for (const [, symbols, target, correct, opts] of deals) {
+      if (power === 'true') expect(opts.hints).toEqual([correct]);
+      if (power === 'half') { expect(opts.hints.length).toBe(2); expect(opts.hints).toContain(correct); expect(new Set(opts.hints).size).toBe(2); }
+      if (power === null) expect(opts.hints).toEqual([]);
+    }
+    const intro = view.calls.find((c) => c[0] === 'showOpening');
+    expect(intro[2].power).toBe(power);
+    const r = view.calls.find((c) => c[0] === 'showResult')[1];
+    expect(r.challenger.power).toBe(power);
+  }
+});

@@ -24,3 +24,19 @@ it('game over text', () => {
   expect(gameOverText('m')).toBe('その後、人口が一人減ったが誰も気づくことはなかった。');
   expect(gameOverText('f')).toBe('その後、人口が一人減ったが誰も気づくことはなかった。');
 });
+
+it('power roll: 1/16384 a true psychic, 1/8192 a half psychic, otherwise none', async () => {
+  const { rollPower } = await import('../src/challenger.js');
+  const seen = { true: 0, half: 0, null: 0 };
+  for (let r = 0; r < 16384; r++) seen[rollPower(() => r)]++;
+  expect(seen.true).toBe(1);
+  expect(seen.half).toBe(2);
+  expect(seen.null).toBe(16384 - 3);
+  expect(rollPower((n) => { expect(n).toBe(16384); return 5; })).toBe(null);
+});
+
+it('challengers carry their power', () => {
+  expect(makeChallenger(1, () => 0, () => 0).power).toBe('true');
+  expect(makeChallenger(1, () => 0, () => 1).power).toBe('half');
+  expect(makeChallenger(1, () => 0, () => 99).power).toBe(null);
+});

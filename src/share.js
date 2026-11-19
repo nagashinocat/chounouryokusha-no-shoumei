@@ -6,7 +6,8 @@ const fmt = (n) => Math.round(n).toLocaleString('en-US');
 
 export function shareText(r) {
   const head = r.cleared ? t('shareHeadCleared') : r.vanishedNumber != null ? t('shareHeadVanished', { n: fmt(r.vanishedNumber) }) : '';
-  return t('shareText', { title: t('title'), streak: r.maxStreak, odds: r.odds.percentText, analogy: r.odds.analogy, head }).trim();
+  const p = r.challenger?.power ? t('powerShare', { p: t(r.challenger.power === 'true' ? 'powerTrueResult' : 'powerHalfResult') }) : '';
+  return (t('shareText', { title: t('title'), streak: r.maxStreak, odds: r.odds.percentText, analogy: r.odds.analogy, head }) + p).trim();
 }
 
 export function xIntentUrl(text, url) {
