@@ -113,6 +113,7 @@ export function createCards(stage) {
     unfocus(duration = 0.25) { return stage.moveCamera(home.pos, home.target, duration); },
     // 運命の選択用：4枚の上をカメラが回る
     centerOf() { return new THREE.Vector3(0, Y, -0.05); },
+    hideAll() { cards.forEach((c) => { c.rotation.set(0, 0, 0); c.position.copy(c.userData.home); }); },
     lock() { locked = true; },
     unlock() { lock.release(); locked = false; },
     screenPos(i) {

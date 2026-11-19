@@ -4,3 +4,49 @@ html,body{margin:0;height:100%;background:#000;color:#eee;overflow:hidden;touch-
 #ui{position:fixed;inset:0;pointer-events:none}
 #ui .interactive,#ui button{pointer-events:auto}
 .notice{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:2em;line-height:1.8;background:#000}
+.hud{position:absolute;left:0;right:0;top:0;padding:max(12px,env(safe-area-inset-top)) 16px 0;opacity:0;transition:opacity .4s;
+ text-shadow:0 0 8px #000,0 0 2px #000;font-family:"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif}
+.hud.on{opacity:1}
+.hud-row{display:flex;align-items:baseline;gap:6px;white-space:nowrap}
+.hud-label{font-size:13px;color:#bbb;letter-spacing:.2em}
+.hud-believers{font-size:clamp(20px,7vw,30px);font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:.02em;transition:color .2s}
+.hud.up .hud-believers{color:#ffd76a}.hud.down .hud-believers{color:#ff4b55}
+.hud-unit{font-size:14px;color:#ccc}
+.hud-streak{margin-left:auto;white-space:nowrap;font-size:15px;color:#ffb347}.hud-streak b{font-size:22px;margin:0 2px}
+.hud-bar{height:4px;background:rgba(255,255,255,.12);margin-top:6px;border-radius:2px;overflow:hidden}
+.hud-bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#8a1a22,#ff3b47,#ffd76a);transition:width .6s}
+.hud-pop{font-size:11px;color:#999;margin-top:4px;text-align:right;font-variant-numeric:tabular-nums}
+.redflash{position:absolute;inset:0;background:radial-gradient(ellipse at center,rgba(255,0,20,0) 30%,rgba(255,0,20,.55));opacity:0}
+.redflash.go{animation:red .6s ease-out}
+@keyframes red{0%{opacity:1}100%{opacity:0}}
+.screens{position:absolute;inset:0}
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2em 1.6em;
+ opacity:0;transition:opacity .35s;text-align:center}
+.screen.in{opacity:1}
+.screen.dark{background:rgba(0,0,0,.92)}
+.screen.black{background:#000}
+.screen.pass{pointer-events:none}
+.screen .line{font-size:19px;line-height:2;letter-spacing:.08em;margin:.4em 0;min-height:2em}
+.screen.dark .l1{font-size:15px;color:#ff4b55;letter-spacing:.04em}
+.btn{margin-top:2em;font:inherit;font-size:17px;letter-spacing:.3em;color:#eee;background:transparent;border:1px solid #888;padding:.8em 2.2em;border-radius:2px}
+.btn:active{background:#fff;color:#000}
+.banner{position:absolute;top:44%;transition:top .6s,font-size .6s;left:0;right:0;font-size:30px;letter-spacing:.25em;color:#ff2b3a;text-shadow:0 0 18px #ff0018,0 0 4px #000,0 0 30px #000;animation:pulse 1s ease-in-out infinite}
+.banner.fate.small{top:auto;bottom:max(18px,env(safe-area-inset-bottom));font-size:18px}
+.banner.clear{top:40%;font-size:20px;line-height:1.9;letter-spacing:.1em;color:#fff6d8;text-shadow:0 0 16px #ffcf7a;animation:none;padding:0 1.2em}
+@keyframes pulse{50%{opacity:.55}}
+.pop{margin-top:2.5em;font-size:13px;color:#999;letter-spacing:.2em}
+.pop b{display:inline-block;margin-top:.4em;font-size:26px;color:#eee;letter-spacing:.04em;font-variant-numeric:tabular-nums}
+.pop b.tick{color:#ff4b55}
+.result-screen{background:rgba(0,0,0,.88);justify-content:flex-start;overflow-y:auto;padding-top:max(2em,env(safe-area-inset-top))}
+.result{width:100%;max-width:420px;font-family:"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif}
+.result h2{font-family:"Hiragino Mincho ProN","Noto Serif JP",serif;font-size:22px;letter-spacing:.4em;color:#ff3b47;margin:.2em 0 .6em}
+.result .who{font-size:13px;color:#aaa;margin:0 0 1em}
+.result dl{display:grid;grid-template-columns:auto 1fr;gap:.5em 1em;text-align:left;margin:0 auto;width:fit-content;align-items:baseline}
+.result dt{color:#999;font-size:13px}.result dd{margin:0;font-size:15px}
+.result .r-streak{font-size:44px;color:#ffd76a;font-variant-numeric:tabular-nums}
+.result .r-odds b{font-size:20px}
+.result .analogy{margin:1.2em 0;font-size:14px;line-height:1.9;color:#ccc}.result .analogy b{font-size:17px;color:#fff}
+.result dl.small{margin-top:.6em}.result dl.small dd{font-size:13px}
+.result .btns{display:flex;flex-direction:column;align-items:center;gap:.6em;margin-top:1.4em}
+.result .btns .btn{margin-top:0;min-width:15em;letter-spacing:.15em}
+.share-fallback{margin-top:1em;font-size:13px}.share-fallback a{color:#ffd76a}

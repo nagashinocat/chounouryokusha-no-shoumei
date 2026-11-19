@@ -1,0 +1,84 @@
+import { it, expect } from 'vitest';
+import { createFlow, OPENING_TEXT, NEXT_TEXT } from '../src/flow.js';
+import { createStorage } from '../src/storage.js';
+import { createCounter } from '../src/counter.js';
+import { gameOverText } from '../src/challenger.js';
+import { oddsFor } from '../src/odds.js';
+
+const mem = () => { const m = new Map(); return { getItem: k => m.get(k) ?? null, setItem: (k, v) => m.set(k, String(v)) }; };
+
+function fakeView() {
+  const calls = [];
+  const rec = (name) => async (...a) => { calls.push([name, ...a]); };
+  return {
+    calls, names: () => calls.map(c => c[0]),
+    showOpening: rec('showOpening'), showChallenger: rec('showChallenger'), hud: rec('hud'),
+    dealRound: rec('dealRound'), waitPick: async () => { calls.push(['waitPick']); return 0; },
+    showHit: rec('showHit'), showMiss: rec('showMiss'), fateRound: rec('fateRound'),
+    showClear: rec('showClear'), showGameOver: rec('showGameOver'), showResult: rec('showResult'),
+  };
+}
+function setup({ rig, population, backendCount = 0 } = {}) {
+  const storage = createStorage(mem());
+  let count = backendCount, increments = 0;
+  const backend = { getCount: async () => (population != null ? 8_200_000_000 - population : count), increment: async () => { increments++; return ++count; } };
+  const counter = createCounter({ backend, storage });
+  const view = fakeView();
+  const flow = createFlow({ counter, storage, view, rig, pick: (n) => 0 });
+  return { flow, view, storage, inc: () => increments };
+}
+
+it('first visit shows the opening, later visits introduce the next challenger', async () => {
+  const s = setup({ rig: 'miss' });
+  await s.flow.start();
+  expect(s.view.calls.find(c => c[0] === 'showOpening')[1]).toBe(OPENING_TEXT);
+  expect(s.view.names()).not.toContain('showChallenger');
+  s.view.calls.length = 0;
+  await s.flow.start();
+  const intro = s.view.calls.find(c => c[0] === 'showChallenger');
+  expect(intro[1]).toBe(NEXT_TEXT);
+  expect(intro[2]).toMatch(/^挑戦者 No\.0002 /);
+});
+
+it('all misses: 4→3→2→1→0, game over text, one vanish report', async () => {
+  const s = setup({ rig: 'miss' });
+  const result = await s.flow.start();
+  const believers = s.view.calls.filter(c => c[0] === 'showMiss').map(c => c[1].believers);
+  expect(believers).toEqual([3, 2, 1, 0]);
+  const go = s.view.calls.find(c => c[0] === 'showGameOver');
+  expect(go[1]).toBe(gameOverText(result.challenger.gender));
+  expect(go[2]).toBe(8_200_000_000); expect(go[3]).toBe(8_199_999_999);
+  expect(s.inc()).toBe(1);
+  expect(result.vanishedNumber).toBe(1);
+});
+
+it('all hits with population 100: third round is the fate round and clears, no vanish', async () => {
+  const s = setup({ rig: 'rig', population: 100 });
+  const result = await s.flow.start();
+  const names = s.view.names();
+  const fateAt = names.indexOf('fateRound');
+  expect(fateAt).toBeGreaterThan(-1);
+  expect(names.filter(n => n === 'showHit').length).toBe(3); // 4→16→64→256
+  expect(names.filter(n => n === 'fateRound').length).toBe(1);
+  expect(names).toContain('showClear');
+  expect(s.inc()).toBe(0);
+  expect(result.cleared).toBe(true);
+});
+
+it('result carries streak, odds, believers, rounds, challenger and best is saved', async () => {
+  const s = setup({ rig: 'rig', population: 100 });
+  await s.flow.start();
+  const r = s.view.calls.find(c => c[0] === 'showResult')[1];
+  expect(r).toMatchObject({ maxStreak: 3, odds: oddsFor(3), believers: 256, rounds: 3, cleared: true, vanishedNumber: null });
+  expect(r.challenger.label).toMatch(/^挑戦者 No\.0001 /);
+  expect(s.storage.loadBest()).toBe(3);
+});
+
+it('target is on the card that carries it', async () => {
+  const s = setup({ rig: 'miss' });
+  await s.flow.start();
+  const deal = s.view.calls.find(c => c[0] === 'dealRound');
+  const [, symbols, target, correct] = deal;
+  expect(symbols[correct]).toBe(target);
+  expect(new Set(symbols).size).toBe(4);
+});

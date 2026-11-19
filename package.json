@@ -3,8 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "vitest run tests --exclude tests/rules/**",
-    "test:rules": "firebase emulators:exec --only firestore --project demo-chounou \"vitest run tests/rules\"",
+    "test": "vitest run",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-chounou \"RULES=1 vitest run\"",
     "e2e": "playwright test",
     "serve": "http-server -p 4173 -c-1 ."
   },

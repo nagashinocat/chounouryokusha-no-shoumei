@@ -22,7 +22,7 @@ export const ANALOGIES = [
   { denominator: 34359738368, text: 'コインを35回投げて全部表が出る' },
 ];
 
-const ZERO = '何も起きなかったのと同じ確率です';
+const ZERO = '何も起きなかった';
 
 export function oddsFor(streak) {
   const denominator = 4 ** streak;
