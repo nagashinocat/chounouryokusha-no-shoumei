@@ -28,34 +28,25 @@ function fakeAC() {
   return { AC, started };
 }
 
-it('the score loops 8 bars of the voice-memo melody in music-box register', async () => {
+it('the score is the solfege the owner wrote, 3 notes per group, played twice over 8 bars', async () => {
   const { MELODY, LOOP_STEPS } = await import('../src/audio.js');
-  expect(LOOP_STEPS).toBe(64); // 8小節 × 8分音符8つ
-  for (const [step, midi, len] of MELODY) {
-    expect(step).toBeGreaterThanOrEqual(0); expect(step).toBeLessThan(64);
-    expect(midi).toBeGreaterThanOrEqual(72); expect(midi).toBeLessThanOrEqual(91);
-    expect(len).toBeGreaterThan(0);
-  }
-  // 3つ目のボイスメモを1小節目の音程に合わせたもの：頭はC、終わりはE(2オクターブ上げたもの)
-  expect(MELODY[0]).toEqual([0, 60 + 24, 1]);
-  expect(MELODY.at(-1)).toEqual([62, 52 + 24, 2]);
-  // 6小節目は2小節目と同じ形の繰り返しになる
-  const bar = (b) => MELODY.filter(([st]) => st >= b * 8 && st < b * 8 + 3).map(([, m]) => m);
-  expect(bar(5)).toEqual(bar(1));
-  expect(MELODY.length).toBe(48);
+  expect(LOOP_STEPS).toBe(64);
+  // シ ミ レ♯ シ レ ド♯ ラ ド シ ソ ラ シ ラ ソ ミ ミ ファ♯ ソ ファ♯ ミ レ♯ ド♯ レ♯ ミ (2オクターブ上げたもの)
+  const solfege = [59, 64, 63, 59, 62, 61, 57, 60, 59, 55, 57, 59, 57, 55, 52, 52, 54, 55, 54, 52, 51, 49, 51, 52].map((m) => m + 24);
+  expect(MELODY.map(([, m]) => m)).toEqual([...solfege, ...solfege]);
+  // リズム：まとまりごとに 8分・8分・4分
+  MELODY.forEach(([st, , len], i) => {
+    expect(st).toBe(Math.floor(i / 3) * 4 + (i % 3));
+    expect(len).toBe(i % 3 === 2 ? 2 : 1);
+  });
+  for (const [, m] of MELODY) { expect(m).toBeGreaterThanOrEqual(72); expect(m).toBeLessThanOrEqual(91); }
 });
 
-it('melody stays in A minor (plus the leading tone G#) so it is eerie but not queasy', async () => {
-  const { MELODY } = await import('../src/audio.js');
-  const allowed = new Set([9, 11, 0, 2, 4, 5, 7, 8]); // A B C D E F G G#
-  for (const [, m] of MELODY) expect(allowed.has(m % 12)).toBe(true);
-});
-
-it('backing follows A-minor chords: bass, pad and choir only use chord tones', async () => {
+it('backing follows chords in the melody key: bass, pad and choir only use chord tones', async () => {
   const { eventsAt, CHORDS } = await import('../src/audio.js');
   expect(CHORDS.length).toBe(8);
-  const diatonic = { A: 9, D: 2, E: 4, F: 5, C: 0, G: 7 };
-  for (const c of CHORDS) expect(Object.values(diatonic)).toContain(c.root % 12);
+  // ホ短調まわりの和音(E, A, B, C, D, G を根音とするもの)
+  for (const c of CHORDS) expect([4, 9, 11, 0, 2, 7]).toContain(c.root % 12);
   for (let st = 0; st < 64; st++) {
     const chord = CHORDS[Math.floor(st / 8)];
     for (const e of eventsAt(st, 4)) {
