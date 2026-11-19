@@ -323,7 +323,7 @@ export function installUnlock(target, audio) {
 
 export function mountMuteButton(ui, audio) {
   const b = document.createElement('button');
-  b.className = 'mute interactive'; b.setAttribute('aria-label', '音のオン・オフ');
+  b.className = 'mute interactive'; b.setAttribute('aria-label', 'Sound / 音');
   const draw = () => { b.textContent = audio.muted ? '🔇' : '🔊'; };
   b.addEventListener('click', () => { audio.unlock(); audio.setMuted(!audio.muted); draw(); });
   draw(); ui.appendChild(b);

@@ -6,6 +6,7 @@ import { createHud } from './ui/hud.js';
 import { createScreens } from './ui/screens.js';
 import { createFx } from './scene/fx.js';
 import { debugMode, useSharedCounter } from './debug.js';
+import { t } from './i18n.js';
 import { layersForTier } from './audio.js';
 
 export async function startGame({ stage, cards, audience, ui, params, audio = null, share = null }) {
@@ -27,12 +28,12 @@ export async function startGame({ stage, cards, audience, ui, params, audio = nu
   const view = {
     async showOpening(text) {
       hud.show(false);
-      await screens.story([text], '始める');
+      await screens.story([text], t('start'));
       audio?.unlock(); audio?.bgm(true);
     },
     async showChallenger(text, label) {
       hud.show(false);
-      await screens.story([text, label], '挑む');
+      await screens.story([text, label], t('challenge'));
       audio?.unlock(); audio?.bgm(true);
     },
     async hud(game) {
@@ -55,7 +56,7 @@ export async function startGame({ stage, cards, audience, ui, params, audio = nu
     },
     async fateRound() {
       cards.hideAll();
-      fateBanner = screens.banner('運 命 の 選 択', 'data-fate', 'fate');
+      fateBanner = screens.banner(t('fate'), 'data-fate', 'fate');
       await fx.fateIntro();
       fateBanner.el.classList.add('small');
     },
@@ -80,7 +81,7 @@ export async function startGame({ stage, cards, audience, ui, params, audio = nu
     },
     async showClear() {
       hud.show(false);
-      const b = screens.banner('全人類が、あなたを超能力者だと信じた。', 'data-clear', 'clear');
+      const b = screens.banner(t('clear'), 'data-clear', 'clear');
       await fx.clear();
       await new Promise((r) => setTimeout(r, 2200));
       b.remove();
@@ -104,7 +105,8 @@ export async function startGame({ stage, cards, audience, ui, params, audio = nu
 
   const flow = createFlow({ counter, storage, view, rig, audio, hall });
   hud.show(false);
-  await screens.title(undefined, {
+  await screens.title(null, {
+    storage,
     onHall: async () => {
       stage.setCredits(creditPages(await hall.fetchNames()));
       await stage.focusMonitor();

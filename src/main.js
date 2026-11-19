@@ -2,6 +2,8 @@ import { createStage } from './scene/stage.js';
 import { createCards } from './scene/cards.js';
 import { createAudience } from './scene/audience.js';
 import { SYMBOLS } from './config.js';
+import { detectLang, setLang, t } from './i18n.js';
+import { createStorage as storageFor } from './storage.js';
 
 const params = new URLSearchParams(location.search);
 const ui = document.getElementById('ui');
@@ -25,9 +27,10 @@ function pixelsOf(canvas) {
 }
 
 async function boot() {
+  setLang(detectLang(navigator.languages ?? [navigator.language], storageFor()));
   const testMode = params.get('test');
   const stage = createStage(document.getElementById('gl'), { preserve: !!testMode });
-  if (!stage) { notice('この端末では遊べません。<br>3D表示(WebGL)に対応したブラウザで開いてください。'); return; }
+  if (!stage) { notice(t('noWebgl')); return; }
   const cards = createCards(stage);
   const audience = createAudience(stage);
   audience.setBelievers(4, { animate: false });

@@ -1,5 +1,7 @@
 // 「認められた超能力者」(全クリした人)のニックネーム。
 // 名前は誰でも入れられる前提なので、ここでは形だけ整える。ひどいものは持ち主が Firebase の画面で消す。
+import { t } from './i18n.js';
+
 export const NAME_MAX = 12;
 const URLISH = /(https?:|www\.|\.(com|net|org|jp|io|me|ly|gg)\b)/i;
 
@@ -12,7 +14,7 @@ export function sanitizeNickname(raw) {
 }
 
 export function tickerText(names) {
-  return names.length ? `認められた超能力者　${names.join('　／　')}` : 'まだ誰もいない';
+  return names.length ? t('ticker', { names: names.join('　／　') }) : t('nobody');
 }
 
 const TIMEOUT = 3000;
@@ -39,7 +41,7 @@ export function createHall({ backend, storage }) {
 
 // テレビの提供クレジットのように、1画面8人ずつに分ける
 export function creditPages(names, per = 8) {
-  if (!names.length) return [['まだ誰もいない']];
+  if (!names.length) return [[t('nobody')]];
   const pages = [];
   for (let i = 0; i < names.length; i += per) pages.push(names.slice(i, i + per));
   return pages;

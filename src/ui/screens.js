@@ -1,4 +1,5 @@
 import { rollNumber } from './hud.js';
+import { t, getLang, setLang } from '../i18n.js';
 
 const fmt = (n) => Math.round(n).toLocaleString('en-US');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -49,10 +50,25 @@ export function createScreens(ui) {
   return {
     clear,
     // スタート画面：黒地の真ん中に縦書きで題字、後ろで信者の目がぼんやり光る。どこかをタップで進む
-    title(text = '超能力者の証明', { onHall = null, onHallBack = null } = {}) {
-      const s = mount(`<canvas></canvas><div class="title-text">${esc(text)}</div>
-        ${onHall ? '<button class="btn hall-btn">認められた超能力者</button><button class="btn hall-back">戻る</button>' : ''}
-        <p class="title-hint">画面をタップ</p>`, 'title-screen interactive');
+    title(text = null, { onHall = null, onHallBack = null, storage = null } = {}) {
+      const s = mount(`<canvas></canvas><div class="title-text"></div>
+        ${onHall ? '<button class="btn hall-btn"></button><button class="btn hall-back"></button>' : ''}
+        <button class="btn lang-btn"></button>
+        <p class="title-hint"></p>`, 'title-screen interactive');
+      // 言語を切り替えたら、タイトル画面の文字をその場で書き換える
+      const paint = () => {
+        s.classList.toggle('lang-en', getLang() === 'en');
+        s.querySelector('.title-text').textContent = text ?? t('title');
+        s.querySelector('.title-hint').textContent = t('tapHint');
+        s.querySelector('.lang-btn').textContent = t('langButton');
+        if (onHall) { s.querySelector('.hall-btn').textContent = t('hallButton'); s.querySelector('.hall-back').textContent = t('back'); }
+      };
+      paint();
+      s.querySelector('.lang-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        setLang(getLang() === 'en' ? 'ja' : 'en', storage);
+        paint();
+      });
       let inHall = false;
       if (onHall) {
         s.querySelector('.hall-btn').addEventListener('click', async (e) => {
@@ -119,11 +135,11 @@ export function createScreens(ui) {
     // 全クリした人だけ：名前を残す(残さないことも選べる)。名前か null を返す
     async nickname(max = 12) {
       const s = mount(`<div class="nick interactive" data-nickname>
-          <p class="line">あなたの名を、証明として残せ。</p>
-          <p class="nick-sub">モニターに、認められた超能力者として流れ続けます(${max}文字まで)</p>
-          <input type="text" maxlength="${max}" autocomplete="off" enterkeyhint="done" placeholder="ニックネーム">
-          <p class="nick-err" hidden>その名前は刻めません。別の名前にしてください。</p>
-          <div class="btns"><button class="btn carve">刻む</button><button class="btn skip">残さない</button></div>
+          <p class="line">${esc(t('nickPrompt'))}</p>
+          <p class="nick-sub">${esc(t('nickSub', { max }))}</p>
+          <input type="text" maxlength="${max}" autocomplete="off" enterkeyhint="done" placeholder="${esc(t('nickPlaceholder'))}">
+          <p class="nick-err" hidden>${esc(t('nickError'))}</p>
+          <div class="btns"><button class="btn carve">${esc(t('carve'))}</button><button class="btn skip">${esc(t('skip'))}</button></div>
         </div>`, 'dark');
       const input = s.querySelector('input');
       setTimeout(() => input.focus(), 400);
@@ -141,7 +157,7 @@ export function createScreens(ui) {
       return { el: s.firstElementChild, remove: () => { s.classList.remove('in'); setTimeout(() => { if (s.parentNode) clear(); }, 400); } };
     },
     async gameOver(text, before, after) {
-      const s = mount(`<p class="line go-text"></p><p class="pop" hidden>世界人口<br><b>${fmt(before)}</b>人</p>`, 'black');
+      const s = mount(`<p class="line go-text"></p><p class="pop" hidden>${esc(t('popLabel'))}<br><b>${fmt(before)}</b>${esc(t('people'))}</p>`, 'black');
       await sleep(900);
       await typeInto(s.querySelector('.go-text'), text, 14);
       await sleep(1200);
@@ -155,23 +171,23 @@ export function createScreens(ui) {
     async result(r, { onShare } = {}) {
       const s = mount(`
         <div class="result interactive" data-result>
-          <h2>${r.cleared ? '全人類が、信じた。' : '記 録'}</h2>
+          <h2>${esc(r.cleared ? t('resultCleared') : t('resultTitle'))}</h2>
           <p class="who">${esc(r.challenger.label)}</p>
           <dl>
-            <dt>最大連続</dt><dd><b class="r-streak">0</b>回</dd>
-            <dt>その確率</dt><dd class="r-odds"><b>${esc(r.odds.percentText)}</b></dd>
+            <dt>${esc(t('maxStreak'))}</dt><dd><b class="r-streak">0</b>${esc(t('timesUnit'))}</dd>
+            <dt>${esc(t('probability'))}</dt><dd class="r-odds"><b>${esc(r.odds.percentText)}</b></dd>
           </dl>
-          <p class="analogy" hidden>これは<br><b>${esc(r.odds.analogy)}</b><br>のと同じくらいの確率です</p>
+          <p class="analogy" hidden>${esc(t('analogyPre'))}<br><b>${esc(r.odds.analogy)}</b>${t('analogyPost') ? `<br>${esc(t('analogyPost'))}` : ''}</p>
           <dl class="small">
-            <dt>最終の信者</dt><dd><span class="r-bel">0</span>人</dd>
-            <dt>めくった回数</dt><dd>${r.rounds}回</dd>
-            ${r.vanishedNumber != null ? `<dt>消えた挑戦者</dt><dd>${fmt(r.vanishedNumber)}人目</dd>` : ''}
-            ${r.nickname ? `<dt>認められた超能力者</dt><dd>${esc(r.nickname)}</dd>` : ''}
-            <dt>自己ベスト</dt><dd>${r.best}連続</dd>
+            <dt>${esc(t('finalBelievers'))}</dt><dd><span class="r-bel">0</span>${esc(t('people'))}</dd>
+            <dt>${esc(t('rounds'))}</dt><dd>${r.rounds}${esc(t('timesUnit'))}</dd>
+            ${r.vanishedNumber != null ? `<dt>${esc(t('vanished'))}</dt><dd>${esc(t('vanishedNth', { n: fmt(r.vanishedNumber) }))}</dd>` : ''}
+            ${r.nickname ? `<dt>${esc(t('recognized'))}</dt><dd>${esc(r.nickname)}</dd>` : ''}
+            <dt>${esc(t('best'))}</dt><dd>${esc(t('bestUnit', { n: r.best }))}</dd>
           </dl>
           <div class="btns">
-            <button class="btn share">結果を共有する</button>
-            <button class="btn retry">次の挑戦者へ</button>
+            <button class="btn share">${esc(t('share'))}</button>
+            <button class="btn retry">${esc(t('retry'))}</button>
           </div>
           <div class="share-fallback" hidden></div>
         </div>`, 'result-screen');

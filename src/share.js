@@ -1,11 +1,12 @@
 import { drawSymbol } from './scene/symbols.js';
-import { GAME_URL, GAME_TITLE, SYMBOLS } from './config.js';
+import { GAME_URL, SYMBOLS } from './config.js';
+import { t } from './i18n.js';
 
 const fmt = (n) => Math.round(n).toLocaleString('en-US');
 
 export function shareText(r) {
-  const head = r.cleared ? '全人類に超能力者だと信じさせた。' : r.vanishedNumber != null ? `${fmt(r.vanishedNumber)}人目の消えた挑戦者になった。` : '';
-  return `【${GAME_TITLE}】最大${r.maxStreak}連続で的中（確率 ${r.odds.percentText}）。${r.odds.analogy}のと同じくらいの確率らしい。${head}`;
+  const head = r.cleared ? t('shareHeadCleared') : r.vanishedNumber != null ? t('shareHeadVanished', { n: fmt(r.vanishedNumber) }) : '';
+  return t('shareText', { title: t('title'), streak: r.maxStreak, odds: r.odds.percentText, analogy: r.odds.analogy, head }).trim();
 }
 
 export function xIntentUrl(text, url) {
@@ -19,7 +20,7 @@ export async function shareResult(blob, result, url = GAME_URL, env = globalThis
   const nav = env.navigator;
   try {
     const file = new env.File([blob], 'chounouryokusha-no-shoumei.png', { type: 'image/png' });
-    const data = { files: [file], text, url, title: GAME_TITLE };
+    const data = { files: [file], text, url, title: t('title') };
     if (nav?.canShare?.({ files: [file] }) && nav.share) {
       await nav.share(data);
       return 'shared';
@@ -46,28 +47,30 @@ export function drawResultImage(r, canvas = document.createElement('canvas')) {
   g.fillStyle = sp; g.beginPath(); g.moveTo(W / 2 - 120, 0); g.lineTo(W / 2 + 120, 0); g.lineTo(W / 2 + 460, H); g.lineTo(W / 2 - 460, H); g.fill();
 
   g.textAlign = 'center'; g.fillStyle = '#ff2b3a';
-  g.font = `bold 64px ${serif}`; g.fillText([...GAME_TITLE].join(' '), W / 2, 140);
+  g.font = `bold 64px ${serif}`; g.fillText(/[a-z]/i.test(t('title')) ? t('title').toUpperCase() : [...t('title')].join(' '), W / 2, 140);
   g.fillStyle = '#aaa'; g.font = `32px ${sans}`; g.fillText(r.challenger.label, W / 2, 215);
 
-  g.fillStyle = '#ccc'; g.font = `40px ${sans}`; g.fillText('最大連続', W / 2, 340);
+  g.fillStyle = '#ccc'; g.font = `40px ${sans}`; g.fillText(t('imgMaxStreak'), W / 2, 340);
   g.fillStyle = '#ffd76a'; g.font = `bold 220px ${sans}`; g.fillText(String(r.maxStreak), W / 2, 560);
-  g.fillStyle = '#ccc'; g.font = `44px ${sans}`; g.fillText('回 的中', W / 2, 635);
+  g.fillStyle = '#ccc'; g.font = `44px ${sans}`; g.fillText(t('imgHits'), W / 2, 635);
 
   g.fillStyle = '#fff'; g.font = `bold 70px ${sans}`; g.fillText(r.odds.percentText, W / 2, 765);
-  g.fillStyle = '#ccc'; g.font = `34px ${sans}`; g.fillText('これは', W / 2, 845);
+  g.fillStyle = '#ccc'; g.font = `34px ${sans}`; g.fillText(t('analogyPre'), W / 2, 845);
   // たとえは長いので折り返す
   g.fillStyle = '#fff'; g.font = `bold 44px ${sans}`;
   const lines = []; let cur = '';
-  for (const ch of r.odds.analogy) { if (g.measureText(cur + ch).width > W - 160) { lines.push(cur); cur = ch; } else cur += ch; }
+  // 英語は単語の切れ目で、日本語は1文字ずつ折り返す
+  const tokens = /[a-z]/i.test(r.odds.analogy) ? r.odds.analogy.split(/(?<= )/) : [...r.odds.analogy];
+  for (const ch of tokens) { if (g.measureText(cur + ch).width > W - 160 && cur) { lines.push(cur); cur = ch; } else cur += ch; }
   lines.push(cur);
   lines.forEach((l, i) => g.fillText(l, W / 2, 910 + i * 60));
   let y = 910 + lines.length * 60 + 10;
-  g.fillStyle = '#ccc'; g.font = `34px ${sans}`; g.fillText('のと同じくらいの確率です', W / 2, y);
+  g.fillStyle = '#ccc'; g.font = `34px ${sans}`; if (t('analogyPost')) g.fillText(t('analogyPost'), W / 2, y);
 
   y += 100;
   g.font = `bold 40px ${serif}`;
-  if (r.cleared) { g.fillStyle = '#fff1c4'; g.fillText('全人類が、信じた。', W / 2, y); }
-  else if (r.vanishedNumber != null) { g.fillStyle = '#ff4b55'; g.fillText(`${fmt(r.vanishedNumber)}人目の消えた挑戦者`, W / 2, y); }
+  if (r.cleared) { g.fillStyle = '#fff1c4'; g.fillText(t('resultCleared'), W / 2, y); }
+  else if (r.vanishedNumber != null) { g.fillStyle = '#ff4b55'; g.fillText(t('imgVanished', { n: fmt(r.vanishedNumber) }), W / 2, y); }
 
   SYMBOLS.forEach((s, i) => drawSymbol(g, s, W / 2 + (i - 1.5) * 110, H - 150, 70, 'rgba(255,255,255,.5)', 6));
   g.fillStyle = '#777'; g.font = `28px ${sans}`; g.fillText(GAME_URL.replace(/^https:\/\//, ''), W / 2, H - 60);
@@ -95,8 +98,8 @@ export function prepareShare(result, makeBlob = drawResultImage, env = globalThi
 }
 
 function showFallback(fallbackEl, url, result) {
-  fallbackEl.innerHTML = `<img src="${url}" alt="結果画像" style="width:70%;border:1px solid #333;margin:.6em 0"><br>
-    <a href="${url}" download="chounouryokusha-no-shoumei.png">画像を保存する</a>
-    <a href="${xIntentUrl(shareText(result), GAME_URL)}" target="_blank" rel="noopener">Xに投稿する</a>`;
+  fallbackEl.innerHTML = `<img src="${url}" alt="${t('resultImageAlt')}" style="width:70%;border:1px solid #333;margin:.6em 0"><br>
+    <a href="${url}" download="chounouryokusha-no-shoumei.png">${t('saveImage')}</a>
+    <a href="${xIntentUrl(shareText(result), GAME_URL)}" target="_blank" rel="noopener">${t('postX')}</a>`;
   fallbackEl.hidden = false;
 }

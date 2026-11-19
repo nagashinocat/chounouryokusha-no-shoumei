@@ -1,0 +1,141 @@
+// 日本語と英語の文言。スマホの言語で自動に選び、タイトル画面のボタンで切り替えられる(選んだ言語は端末に保存)。
+export const DICT = {
+  ja: {
+    title: '超能力者の証明',
+    tapHint: '画面をタップ',
+    hallButton: '認められた超能力者',
+    back: '戻る',
+    langButton: 'EN',
+    start: '始める',
+    challenge: '挑む',
+    opening: 'なぜか、あなたは全人類に超能力者だと信じさせなければならなくなった。',
+    next: '次の挑戦者は、こいつだ。',
+    challengerLabel: '挑戦者 No.{no} {name}({age}) {job}',
+    fate: '運 命 の 選 択',
+    clear: '全人類が、あなたを超能力者だと信じた。',
+    gameOver: 'その後、人口が一人減ったが誰も気づくことはなかった。',
+    popLabel: '世界人口',
+    people: '人',
+    believers: '信者',
+    streak: '連続',
+    livesAria: 'あと{n}回まで外せる',
+    findThis: 'こ れ を 当 て ろ',
+    ticker: '認められた超能力者　{names}',
+    nobody: 'まだ誰もいない',
+    creditsTitle: '認められた超能力者',
+    sponsor: 'この番組は、ご覧の超能力者の提供でお送りします',
+    nickPrompt: 'あなたの名を、証明として残せ。',
+    nickSub: 'モニターに、認められた超能力者として流れ続けます({max}文字まで)',
+    nickPlaceholder: 'ニックネーム',
+    nickError: 'その名前は刻めません。別の名前にしてください。',
+    carve: '刻む',
+    skip: '残さない',
+    resultCleared: '全人類が、信じた。',
+    resultTitle: '記 録',
+    maxStreak: '最大連続',
+    timesUnit: '回',
+    probability: 'その確率',
+    analogyPre: 'これは',
+    analogyPost: 'のと同じくらいの確率です',
+    finalBelievers: '最終の信者',
+    rounds: 'めくった回数',
+    vanished: '消えた挑戦者',
+    vanishedNth: '{n}人目',
+    recognized: '認められた超能力者',
+    best: '自己ベスト',
+    bestUnit: '{n}連続',
+    share: '結果を共有する',
+    retry: '次の挑戦者へ',
+    saveImage: '画像を保存する',
+    postX: 'Xに投稿する',
+    resultImageAlt: '結果画像',
+    shareHeadCleared: '全人類に超能力者だと信じさせた。',
+    shareHeadVanished: '{n}人目の消えた挑戦者になった。',
+    shareText: '【{title}】最大{streak}連続で的中（確率 {odds}）。{analogy}のと同じくらいの確率らしい。{head}',
+    imgMaxStreak: '最大連続',
+    imgHits: '回 的中',
+    imgVanished: '{n}人目の消えた挑戦者',
+    noWebgl: 'この端末では遊べません。<br>3D表示(WebGL)に対応したブラウザで開いてください。',
+    mute: '音のオン・オフ',
+  },
+  en: {
+    title: 'Proof of a Psychic',
+    tapHint: 'TAP THE SCREEN',
+    hallButton: 'Recognized Psychics',
+    back: 'Back',
+    langButton: 'JP',
+    start: 'Start',
+    challenge: 'Accept',
+    opening: 'For some reason, you now have to make all of humanity believe you are a psychic.',
+    next: 'The next challenger is... this one.',
+    challengerLabel: 'Challenger No.{no} {name} ({age}), {job}',
+    fate: 'THE  FATEFUL  CHOICE',
+    clear: 'All of humanity now believes you are a psychic.',
+    gameOver: 'Afterward, the population dropped by one. No one ever noticed.',
+    popLabel: 'World population',
+    people: '',
+    believers: 'Believers',
+    streak: 'in a row',
+    livesAria: '{n} misses left',
+    findThis: 'F I N D   T H I S',
+    ticker: 'RECOGNIZED PSYCHICS　{names}',
+    nobody: 'No one yet',
+    creditsTitle: 'Recognized Psychics',
+    sponsor: 'This program is brought to you by the psychics shown',
+    nickPrompt: 'Leave your name as proof.',
+    nickSub: 'It will scroll on the monitor as a recognized psychic (up to {max} characters)',
+    nickPlaceholder: 'Nickname',
+    nickError: 'That name cannot be carved. Please choose another.',
+    carve: 'Carve',
+    skip: 'Skip',
+    resultCleared: 'Humanity believed.',
+    resultTitle: 'RECORD',
+    maxStreak: 'Best streak',
+    timesUnit: '',
+    probability: 'Odds',
+    analogyPre: "That's about as likely as",
+    analogyPost: '',
+    finalBelievers: 'Final believers',
+    rounds: 'Cards flipped',
+    vanished: 'Vanished challenger',
+    vanishedNth: 'No.{n}',
+    recognized: 'Recognized psychic',
+    best: 'Personal best',
+    bestUnit: '{n} in a row',
+    share: 'Share result',
+    retry: 'Next challenger',
+    saveImage: 'Save image',
+    postX: 'Post on X',
+    resultImageAlt: 'Result image',
+    shareHeadCleared: 'Made all of humanity believe.',
+    shareHeadVanished: 'Became vanished challenger No.{n}.',
+    shareText: '[{title}] {streak} in a row (odds {odds}). About as likely as {analogy}. {head}',
+    imgMaxStreak: 'BEST STREAK',
+    imgHits: 'in a row',
+    imgVanished: 'Vanished challenger No.{n}',
+    noWebgl: "This device can't run the game.<br>Please open it in a browser that supports 3D (WebGL).",
+    mute: 'Sound on/off',
+  },
+};
+
+let lang = 'ja';
+const listeners = new Set();
+
+export function detectLang(languages = globalThis.navigator?.languages ?? [], storage = null) {
+  const saved = storage?.get?.('cm.lang');
+  if (saved === 'ja' || saved === 'en') return saved;
+  if (!languages.length) return 'ja';
+  return String(languages[0]).toLowerCase().startsWith('ja') ? 'ja' : 'en';
+}
+export function getLang() { return lang; }
+export function setLang(l, storage = null) {
+  lang = l === 'en' ? 'en' : 'ja';
+  storage?.set?.('cm.lang', lang);
+  if (globalThis.document?.documentElement) document.documentElement.lang = lang;
+  for (const fn of listeners) fn(lang);
+}
+export function onLangChange(fn) { listeners.add(fn); return () => listeners.delete(fn); }
+export function t(key, vars = {}) {
+  const s = DICT[lang][key] ?? DICT.ja[key] ?? key;
+  return s.replace(/\{(\w+)\}/g, (_, k) => (vars[k] ?? `{${k}}`));
+}

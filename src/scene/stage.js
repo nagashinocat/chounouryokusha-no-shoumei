@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { drawSymbol } from './symbols.js';
+import { t as tr } from '../i18n.js';
 
 export const ease = {
   inOut: (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2),
@@ -115,7 +116,7 @@ export function createStage(canvas, { preserve = false } = {}) {
   // 砂嵐：小さなノイズ画像を毎フレーム作り直して引き伸ばす
   const noise = document.createElement('canvas'); noise.width = 128; noise.height = 80;
   const ng = noise.getContext('2d'), nimg = ng.createImageData(128, 80);
-  let monitorMode = 'game', credits = [['まだ誰もいない']], creditT = 0;
+  let monitorMode = 'game', credits = [[tr('nobody')]], creditT = 0;
   function drawMonitor(t = 0, dt = 0) {
     const g = monCanvas.getContext('2d');
     g.setTransform(2, 0, 0, 2, 0, 0);
@@ -132,7 +133,7 @@ export function createStage(canvas, { preserve = false } = {}) {
       g.fillStyle = 'rgba(0,0,0,0.55)'; g.beginPath(); g.arc(256, 168, 112, 0, Math.PI * 2); g.fill();
       g.fillStyle = 'rgba(0,0,0,0.7)'; g.fillRect(130, 18, 252, 40);
       g.fillStyle = '#ff2b3a'; g.font = 'bold 30px sans-serif'; g.textAlign = 'center';
-      g.fillText('こ れ を 当 て ろ', 256, 46);
+      g.fillText(tr('findThis'), 256, 46);
       drawSymbol(g, monSymbol, 256, 170, 180, '#f4f4f4', 15);
     }
     // 下の帯：認められた超能力者の名前が右から左へ流れる
@@ -158,7 +159,7 @@ export function createStage(canvas, { preserve = false } = {}) {
     const serif = '"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP","Noto Serif CJK JP",serif';
     g.textAlign = 'center'; g.textBaseline = 'middle';
     g.fillStyle = '#ff2b3a'; g.font = `bold 22px ${serif}`;
-    g.fillText('認められた超能力者', 256, 48);
+    g.fillText(tr('creditsTitle'), 256, 48);
     g.fillStyle = 'rgba(255,43,58,0.6)'; g.fillRect(90, 47, 50, 2); g.fillRect(372, 47, 50, 2);
     g.globalAlpha = fade; g.fillStyle = '#ffffff'; g.font = `bold 25px ${serif}`;
     const cols = names.length > 4 ? 2 : 1, rows = Math.ceil(names.length / cols);
@@ -169,7 +170,7 @@ export function createStage(canvas, { preserve = false } = {}) {
     });
     g.globalAlpha = 1;
     g.fillStyle = '#8a8a8a'; g.font = `14px ${serif}`;
-    g.fillText('この番組は、ご覧の超能力者の提供でお送りします', 256, 292);
+    g.fillText(tr('sponsor'), 256, 292, 480);
     g.textBaseline = 'alphabetic';
   }
   drawMonitor();
@@ -263,6 +264,7 @@ export function createStage(canvas, { preserve = false } = {}) {
     cameraToMonitor() { const c = new THREE.Vector3(); monitor.getWorldPosition(c); return camera.position.distanceTo(c); },
     setTicker(text) { if (text !== tickerText) { tickerText = text; tickerX = 512; } },
     get tickerText() { return tickerText; },
+    get findThisText() { return tr('findThis'); },
     monitorNoise: true,
     render, tween, moveCamera, wait: (s) => tween(s, () => {}, ease.linear),
     // 動いている途中の tween をすべて終わらせる(最後の値まで進めてから止める)

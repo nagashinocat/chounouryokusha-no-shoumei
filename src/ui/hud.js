@@ -1,4 +1,5 @@
 import { MAX_MISSES } from '../config.js';
+import { t } from '../i18n.js';
 
 const fmt = (n) => Math.round(n).toLocaleString('en-US');
 
@@ -23,14 +24,20 @@ export function createHud(ui) {
   const el = document.createElement('div');
   el.className = 'hud';
   el.innerHTML = `
-    <div class="hud-row"><span class="hud-label">信者</span><span class="hud-believers">4</span><span class="hud-unit">人</span>
-      <span class="hud-streak" hidden>🔥<b>0</b>連続</span></div>
+    <div class="hud-row"><span class="hud-label"></span><span class="hud-believers">4</span><span class="hud-unit"></span>
+      <span class="hud-streak" hidden>🔥<b>0</b><i class="hud-streak-unit"></i></span></div>
     <div class="hud-bar"><i></i></div>
-    <div class="hud-sub"><span class="hud-lives"></span><span class="hud-pop">世界人口 <span>8,200,000,000</span>人</span></div>`;
+    <div class="hud-sub"><span class="hud-lives"></span><span class="hud-pop"><em class="hud-pop-label"></em> <span>8,200,000,000</span><em class="hud-pop-unit"></em></span></div>`;
   ui.appendChild(el);
   const red = document.createElement('div'); red.className = 'redflash'; ui.appendChild(red);
   const $ = (s) => el.querySelector(s);
   let shown = 4, population = 8_200_000_000;
+  // 言語に合わせて見出しを書く(ゲームを始めるたびに呼ぶ)
+  const relabel = () => {
+    $('.hud-label').textContent = t('believers'); $('.hud-unit').textContent = t('people');
+    $('.hud-streak-unit').textContent = t('streak'); $('.hud-pop-label').textContent = t('popLabel'); $('.hud-pop-unit').textContent = t('people');
+  };
+  relabel();
 
   function bar(n) {
     const k = Math.min(1, Math.log(Math.max(n, 1)) / Math.log(population));
@@ -38,7 +45,7 @@ export function createHud(ui) {
   }
   return {
     el,
-    show(v = true) { el.classList.toggle('on', v); },
+    show(v = true) { if (v) relabel(); el.classList.toggle('on', v); },
     setPopulation(p) { population = p; $('.hud-pop span').textContent = fmt(p); bar(shown); },
     set(game) {
       shown = game.believers; $('.hud-believers').textContent = fmt(game.believers); bar(game.believers);
@@ -54,7 +61,7 @@ export function createHud(ui) {
     lives(misses) {
       const left = MAX_MISSES - misses;
       $('.hud-lives').innerHTML = `<i>${'●'.repeat(left)}</i><i class="lost">${'●'.repeat(misses)}</i>`;
-      $('.hud-lives').setAttribute('aria-label', `あと${left}回まで外せる`);
+      $('.hud-lives').setAttribute('aria-label', t('livesAria', { n: left }));
     },
     streak(s) { const st = $('.hud-streak'); st.hidden = s < 2; st.querySelector('b').textContent = s; },
     flashRed() { red.classList.remove('go'); void red.offsetWidth; red.classList.add('go'); },

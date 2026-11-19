@@ -4,8 +4,10 @@ import { randomIndex } from './rng.js';
 import { makeChallenger, gameOverText } from './challenger.js';
 import { oddsFor } from './odds.js';
 
-export const OPENING_TEXT = 'なぜか、あなたは全人類に超能力者だと信じさせなければならなくなった。';
-export const NEXT_TEXT = '次の挑戦者は、こいつだ。';
+import { t, DICT } from './i18n.js';
+
+export const OPENING_TEXT = DICT.ja.opening;
+export const NEXT_TEXT = DICT.ja.next;
 
 function shuffle(arr, pick) {
   const a = [...arr];
@@ -22,8 +24,8 @@ export function createFlow({ counter, storage, view, pick = randomIndex, rig = n
       const challenger = makeChallenger(storage.nextChallengerNumber(), pick);
       const first = storage.isFirstVisit();
       const pop = await counter.fetchPopulation();
-      if (first) await view.showOpening(OPENING_TEXT, challenger);
-      else await view.showChallenger(NEXT_TEXT, challenger.label, challenger);
+      if (first) await view.showOpening(t('opening'), challenger);
+      else await view.showChallenger(t('next'), challenger.label, challenger);
 
       let game = createGame({ population: pop.population });
       await view.hud(game);
