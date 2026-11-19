@@ -50,10 +50,11 @@ export function createScreens(ui) {
   return {
     clear,
     // スタート画面：黒地の真ん中に縦書きで題字、後ろで信者の目がぼんやり光る。どこかをタップで進む
-    title(text = null, { onHall = null, onHallBack = null, storage = null } = {}) {
+    title(text = null, { onHall = null, onHallBack = null, storage = null, population = null } = {}) {
       const s = mount(`<canvas></canvas><div class="title-text"></div>
         ${onHall ? '<button class="btn hall-btn"></button><button class="btn hall-back"></button>' : ''}
         <button class="btn lang-btn"></button>
+        <p class="title-pop" hidden><span class="tp-label"></span><b></b><span class="tp-unit"></span></p>
         <p class="title-hint"></p>`, 'title-screen interactive');
       // 言語を切り替えたら、タイトル画面の文字をその場で書き換える
       const paint = () => {
@@ -61,9 +62,16 @@ export function createScreens(ui) {
         s.querySelector('.title-text').textContent = text ?? t('title');
         s.querySelector('.title-hint').textContent = t('tapHint');
         s.querySelector('.lang-btn').textContent = t('langButton');
+        s.querySelector('.tp-label').textContent = t('popLabel'); s.querySelector('.tp-unit').textContent = t('people');
         if (onHall) { s.querySelector('.hall-btn').textContent = t('hallButton'); s.querySelector('.hall-back').textContent = t('back'); }
       };
       paint();
+      // 残りの世界人口(消えた挑戦者のぶん減っている)
+      Promise.resolve(population).then((p) => {
+        if (p == null) return;
+        const el = s.querySelector('.title-pop');
+        el.querySelector('b').textContent = fmt(p); el.hidden = false;
+      }).catch(() => {});
       s.querySelector('.lang-btn').addEventListener('click', (e) => {
         e.stopPropagation();
         setLang(getLang() === 'en' ? 'ja' : 'en', storage);

@@ -107,6 +107,7 @@ export async function startGame({ stage, cards, audience, ui, params, audio = nu
   hud.show(false);
   await screens.title(null, {
     storage,
+    population: counter.fetchPopulation().then((r) => r.population),
     onHall: async () => {
       stage.setCredits(creditPages(await hall.fetchNames()));
       await stage.focusMonitor();

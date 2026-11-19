@@ -77,3 +77,9 @@ html,body{margin:0;height:100%;background:#000;color:#eee;overflow:hidden;touch-
 .title-screen .lang-btn{position:absolute;top:max(16px,env(safe-area-inset-top));right:14px;margin:0;font-size:12px;letter-spacing:.15em;padding:.45em .9em;background:rgba(0,0,0,.5);border-color:#555;color:#bbb}
 .title-screen.hall .lang-btn{display:none}
 .title-screen.lang-en .title-text{writing-mode:horizontal-tb;text-orientation:mixed;letter-spacing:.12em;font-size:clamp(28px,8.5vw,46px);line-height:1.25;max-width:9em;text-transform:uppercase}
+
+.title-screen .title-pop{position:absolute;top:max(18px,env(safe-area-inset-top));left:16px;margin:0;font-size:11px;color:#9a9a9a;letter-spacing:.1em;text-align:left;line-height:1.5;font-family:"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif}
+.title-screen .title-pop .tp-label{display:block}
+.title-screen .title-pop b{display:inline;font-size:17px;color:#ff4b55;letter-spacing:.04em;font-variant-numeric:tabular-nums;font-weight:600}
+.title-screen .title-pop .tp-unit{font-size:11px;margin-left:2px}
+.title-screen.hall .title-pop{display:none}
