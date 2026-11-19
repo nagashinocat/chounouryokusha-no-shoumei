@@ -79,7 +79,16 @@ export function createAudio(storage, nav = globalThis.navigator, { context = nul
         master = ctx.createGain(); master.gain.value = muted ? 0 : 0.9; master.connect(ctx.destination);
         const revive = () => { if (ctx.state !== 'running' && (globalThis.document?.visibilityState ?? 'visible') === 'visible') { try { ctx.resume()?.catch?.(() => {}); } catch {} } };
         ctx.onstatechange = revive;
-        globalThis.document?.addEventListener?.('visibilitychange', revive);
+        // 画面を切り替えたら音を止め、戻ったら再開する
+        globalThis.document?.addEventListener?.('visibilitychange', () => {
+          if (document.visibilityState === 'hidden') {
+            try { ctx.suspend()?.catch?.(() => {}); } catch {}
+            try { keepAlive?.pause?.(); } catch {}
+          } else {
+            revive();
+            try { keepAlive?.play?.()?.catch?.(() => {}); } catch {}
+          }
+        });
         return ctx;
       }
     }

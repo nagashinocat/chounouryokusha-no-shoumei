@@ -136,3 +136,27 @@ it('a silent looping <audio> keeps the iOS audio session alive', async () => {
   expect(audios[0].played).toBeGreaterThanOrEqual(1);
   delete globalThis.window; delete globalThis.document;
 });
+
+it('switching away from the page pauses all sound; coming back resumes it', async () => {
+  let ctxRef, onVis; const calls = [];
+  class AC { constructor() { ctxRef = this; this.state = 'running'; this.currentTime = 0; this.destination = {}; }
+    createGain() { return { gain: { value: 0 }, connect() {} }; } createBuffer() { return {}; } createBufferSource() { return { connect() {}, start() {} }; }
+    suspend() { calls.push('suspend'); this.state = 'suspended'; this.onstatechange?.(); return Promise.resolve(); }
+    resume() { calls.push('resume'); this.state = 'running'; return Promise.resolve(); } }
+  const el = { paused: false, play() { calls.push('play'); this.paused = false; return Promise.resolve(); }, pause() { calls.push('pause'); this.paused = true; }, setAttribute() {}, style: {} };
+  globalThis.window = { AudioContext: AC };
+  globalThis.document = { visibilityState: 'visible', addEventListener: (t, f) => { if (t === 'visibilitychange') onVis = f; }, createElement: () => el };
+  const { createAudio } = await import('../src/audio.js');
+  const a = createAudio(null, {});
+  a.unlock();
+  calls.length = 0;
+  document.visibilityState = 'hidden'; onVis();
+  expect(calls).toContain('suspend');
+  expect(calls).toContain('pause');
+  expect(calls).not.toContain('resume'); // 隠れている間は勝手に戻さない
+  calls.length = 0;
+  document.visibilityState = 'visible'; onVis();
+  expect(calls).toContain('resume');
+  expect(calls).toContain('play');
+  delete globalThis.window; delete globalThis.document;
+});
