@@ -54,19 +54,8 @@ export function eventsAt(step, layers) {
   return ev;
 }
 
-// 0.5秒の無音WAV(8kHz・8bit・モノラル)
-const SILENT_WAV = (() => {
-  const n = 4000, b = new Uint8Array(44 + n), v = new DataView(b.buffer);
-  const w = (o, s) => [...s].forEach((c, i) => (b[o + i] = c.charCodeAt(0)));
-  w(0, 'RIFF'); v.setUint32(4, 36 + n, true); w(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true);
-  v.setUint16(22, 1, true); v.setUint32(24, 8000, true); v.setUint32(28, 8000, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true);
-  w(36, 'data'); v.setUint32(40, n, true); b.fill(128, 44);
-  let s = ''; for (const x of b) s += String.fromCharCode(x);
-  return 'data:audio/wav;base64,' + btoa(s);
-})();
-
 export function createAudio(storage, nav = globalThis.navigator, { context = null } = {}) {
-  let ctx = null, master = null, probeAn = null, keepAlive = null;
+  let ctx = null, master = null, probeAn = null, away = false;
   let muted = storage?.get('cm.muted') === '1';
 
   function ensure() {
@@ -77,18 +66,25 @@ export function createAudio(storage, nav = globalThis.navigator, { context = nul
       if (AC0) {
         ctx = new AC0();
         master = ctx.createGain(); master.gain.value = muted ? 0 : 0.9; master.connect(ctx.destination);
-        const revive = () => { if (ctx.state !== 'running' && (globalThis.document?.visibilityState ?? 'visible') === 'visible') { try { ctx.resume()?.catch?.(() => {}); } catch {} } };
+        const revive = () => { if (!away && ctx.state !== 'running') { try { ctx.resume()?.catch?.(() => {}); } catch {} } };
         ctx.onstatechange = revive;
-        // 画面を切り替えたら音を止め、戻ったら再開する
-        globalThis.document?.addEventListener?.('visibilitychange', () => {
-          if (document.visibilityState === 'hidden') {
-            try { ctx.suspend()?.catch?.(() => {}); } catch {}
-            try { keepAlive?.pause?.(); } catch {}
-          } else {
-            revive();
-            try { keepAlive?.play?.()?.catch?.(() => {}); } catch {}
-          }
-        });
+        // 画面を切り替えたら、その場で音量を0にして止める。戻ったら再開する
+        const hide = () => {
+          away = true;
+          try { master.gain.value = 0; } catch {}
+          try { ctx.suspend()?.catch?.(() => {}); } catch {}
+        };
+        const show = () => {
+          if ((globalThis.document?.visibilityState ?? 'visible') !== 'visible') return;
+          away = false;
+          try { master.gain.value = muted ? 0 : 0.9; } catch {}
+          revive();
+        };
+        globalThis.document?.addEventListener?.('visibilitychange', () => (document.visibilityState === 'hidden' ? hide() : show()));
+        window.addEventListener?.('pagehide', hide);
+        window.addEventListener?.('blur', hide);
+        window.addEventListener?.('pageshow', show);
+        window.addEventListener?.('focus', show);
         return ctx;
       }
     }
@@ -280,14 +276,6 @@ export function createAudio(storage, nav = globalThis.navigator, { context = nul
     unlock() {
       // iOS のマナーモードでも鳴るようにする(Safari 17 以降)
       try { if (nav?.audioSession && nav.audioSession.type !== 'playback') nav.audioSession.type = 'playback'; } catch {}
-      // 無音の <audio> をくり返し流して、iOS が音声を止めにくくする(古い iOS ではマナーモード対策にもなる)
-      if (!keepAlive && globalThis.document?.createElement) {
-        try {
-          keepAlive = document.createElement('audio');
-          keepAlive.loop = true; keepAlive.setAttribute('playsinline', ''); keepAlive.src = SILENT_WAV;
-          keepAlive.play()?.catch?.(() => { keepAlive = null; });
-        } catch { keepAlive = null; }
-      } else if (keepAlive?.paused) { keepAlive.play()?.catch?.(() => {}); }
       if (!ensure()) return;
       if (ctx.state !== 'running') {
         try { ctx.resume(); } catch {}
@@ -302,6 +290,7 @@ export function createAudio(storage, nav = globalThis.navigator, { context = nul
     play(name) { if (!ensure() || muted) return; try { sounds[name]?.(); } catch {} },
     get muted() { return muted; },
     get state() { return ctx ? ctx.state : 'none'; },
+    _masterGain: () => (master ? master.gain.value : null),
     get bgmPlaying() { return !!box; },
     // 調査用：いま実際に出ている音の大きさ(RMS)と、BGMの予定の進み
     _probe() {
@@ -313,7 +302,7 @@ export function createAudio(storage, nav = globalThis.navigator, { context = nul
     },
     setMuted(m) {
       muted = m; storage?.set('cm.muted', m ? '1' : '0');
-      if (master) master.gain.setTargetAtTime(m ? 0 : 0.9, ctx.currentTime, 0.05);
+      if (master && !away) master.gain.setTargetAtTime(m ? 0 : 0.9, ctx.currentTime, 0.05);
     },
   };
 }

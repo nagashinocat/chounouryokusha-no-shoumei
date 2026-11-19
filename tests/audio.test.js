@@ -120,43 +120,39 @@ it('when iOS interrupts the audio, it resumes by itself (no tap needed)', async 
   delete globalThis.window; delete globalThis.document;
 });
 
-it('a silent looping <audio> keeps the iOS audio session alive', async () => {
+it('no hidden <audio> element is used (it would let iOS keep playing in the background)', async () => {
   const made = [];
   class AC { constructor() { this.state = 'suspended'; this.currentTime = 0; this.destination = {}; }
     createGain() { return { gain: { value: 0 }, connect() {} }; } createBuffer() { return {}; } createBufferSource() { return { connect() {}, start() {} }; }
     resume() { this.state = 'running'; return Promise.resolve(); } }
-  globalThis.window = { AudioContext: AC };
-  globalThis.document = { visibilityState: 'visible', addEventListener() {}, createElement: (tag) => { const el = { tag, played: 0, play() { this.played++; return Promise.resolve(); }, setAttribute() {}, style: {} }; made.push(el); return el; } };
+  globalThis.window = { AudioContext: AC, addEventListener() {} };
+  globalThis.document = { visibilityState: 'visible', addEventListener() {}, createElement: (tag) => { made.push(tag); return { play: () => Promise.resolve(), setAttribute() {}, style: {} }; } };
   const { createAudio } = await import('../src/audio.js');
-  const a = createAudio(null, {});
-  a.unlock(); a.unlock();
-  const audios = made.filter((e) => e.tag === 'audio');
-  expect(audios.length).toBe(1);
-  expect(audios[0].loop).toBe(true);
-  expect(audios[0].played).toBeGreaterThanOrEqual(1);
+  createAudio(null, {}).unlock();
+  expect(made).not.toContain('audio');
   delete globalThis.window; delete globalThis.document;
 });
 
-it('switching away from the page pauses all sound; coming back resumes it', async () => {
-  let ctxRef, onVis; const calls = [];
+it('switching away (hidden, pagehide or blur) silences at once and suspends; coming back resumes', async () => {
+  let ctxRef; const calls = []; const docH = {}, winH = {};
   class AC { constructor() { ctxRef = this; this.state = 'running'; this.currentTime = 0; this.destination = {}; }
-    createGain() { return { gain: { value: 0 }, connect() {} }; } createBuffer() { return {}; } createBufferSource() { return { connect() {}, start() {} }; }
-    suspend() { calls.push('suspend'); this.state = 'suspended'; this.onstatechange?.(); return Promise.resolve(); }
+    createGain() { const g = { gain: { value: 0, setTargetAtTime(v) { g.gain.value = v; } }, connect() {} }; return g; } createBuffer() { return {}; } createBufferSource() { return { connect() {}, start() {} }; }
+    suspend() { calls.push('suspend'); this.state = 'suspended'; return Promise.resolve(); }
     resume() { calls.push('resume'); this.state = 'running'; return Promise.resolve(); } }
-  const el = { paused: false, play() { calls.push('play'); this.paused = false; return Promise.resolve(); }, pause() { calls.push('pause'); this.paused = true; }, setAttribute() {}, style: {} };
-  globalThis.window = { AudioContext: AC };
-  globalThis.document = { visibilityState: 'visible', addEventListener: (t, f) => { if (t === 'visibilitychange') onVis = f; }, createElement: () => el };
+  globalThis.window = { AudioContext: AC, addEventListener: (t, f) => { winH[t] = f; } };
+  globalThis.document = { visibilityState: 'visible', hasFocus: () => true, addEventListener: (t, f) => { docH[t] = f; }, createElement: () => ({}) };
   const { createAudio } = await import('../src/audio.js');
   const a = createAudio(null, {});
   a.unlock();
-  calls.length = 0;
-  document.visibilityState = 'hidden'; onVis();
-  expect(calls).toContain('suspend');
-  expect(calls).toContain('pause');
-  expect(calls).not.toContain('resume'); // 隠れている間は勝手に戻さない
-  calls.length = 0;
-  document.visibilityState = 'visible'; onVis();
-  expect(calls).toContain('resume');
-  expect(calls).toContain('play');
+  for (const hide of [() => { document.visibilityState = 'hidden'; docH.visibilitychange(); }, () => winH.pagehide(), () => winH.blur()]) {
+    calls.length = 0;
+    hide();
+    expect(calls).toContain('suspend');
+    expect(a._masterGain()).toBe(0);
+    calls.length = 0;
+    document.visibilityState = 'visible'; (docH.visibilitychange)(); winH.focus?.(); winH.pageshow?.();
+    expect(calls).toContain('resume');
+    expect(a._masterGain()).toBeGreaterThan(0);
+  }
   delete globalThis.window; delete globalThis.document;
 });
