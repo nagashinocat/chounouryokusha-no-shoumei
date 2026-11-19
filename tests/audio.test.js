@@ -36,9 +36,12 @@ it('the score loops 8 bars of the voice-memo melody in music-box register', asyn
     expect(midi).toBeGreaterThanOrEqual(72); expect(midi).toBeLessThanOrEqual(91);
     expect(len).toBeGreaterThan(0);
   }
-  // 3つ目のボイスメモ：頭はC、終わりはF(2オクターブ上げたもの)
+  // 3つ目のボイスメモを1小節目の音程に合わせたもの：頭はC、終わりはE(2オクターブ上げたもの)
   expect(MELODY[0]).toEqual([0, 60 + 24, 1]);
-  expect(MELODY.at(-1)).toEqual([62, 53 + 24, 2]);
+  expect(MELODY.at(-1)).toEqual([62, 52 + 24, 2]);
+  // 6小節目は2小節目と同じ形の繰り返しになる
+  const bar = (b) => MELODY.filter(([st]) => st >= b * 8 && st < b * 8 + 3).map(([, m]) => m);
+  expect(bar(5)).toEqual(bar(1));
   expect(MELODY.length).toBe(48);
 });
 
