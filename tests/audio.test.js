@@ -133,25 +133,39 @@ it('no hidden <audio> element is used (it would let iOS keep playing in the back
   delete globalThis.window; delete globalThis.document;
 });
 
-it('switching away (hidden, pagehide or blur) silences at once and suspends; coming back resumes', async () => {
+it('switching away fades the sound out smoothly before suspending (no beep); coming back fades in', async () => {
   let ctxRef; const calls = []; const docH = {}, winH = {};
-  class AC { constructor() { ctxRef = this; this.state = 'running'; this.currentTime = 0; this.destination = {}; }
-    createGain() { const g = { gain: { value: 0, setTargetAtTime(v) { g.gain.value = v; } }, connect() {} }; return g; } createBuffer() { return {}; } createBufferSource() { return { connect() {}, start() {} }; }
+  const mkGain = () => {
+    const p = { value: 0,
+      cancelScheduledValues() { calls.push('cancel'); }, setValueAtTime(v) { p.value = v; },
+      linearRampToValueAtTime(v) { calls.push(`ramp:${v}`); p.value = v; }, setTargetAtTime(v) { p.value = v; } };
+    return { gain: p, connect() {} };
+  };
+  class AC { constructor() { ctxRef = this; this.state = 'running'; this.currentTime = 1; this.destination = {}; }
+    createGain() { return mkGain(); } createBuffer() { return {}; } createBufferSource() { return { connect() {}, start() {} }; }
     suspend() { calls.push('suspend'); this.state = 'suspended'; return Promise.resolve(); }
     resume() { calls.push('resume'); this.state = 'running'; return Promise.resolve(); } }
-  globalThis.window = { AudioContext: AC, addEventListener: (t, f) => { winH[t] = f; } };
-  globalThis.document = { visibilityState: 'visible', hasFocus: () => true, addEventListener: (t, f) => { docH[t] = f; }, createElement: () => ({}) };
+  const timers = [];
+  globalThis.window = { AudioContext: AC, addEventListener: (t, f) => { winH[t] = f; }, setTimeout: (f, ms) => { timers.push([f, ms]); return timers.length; }, clearTimeout: (id) => { if (timers[id - 1]) timers[id - 1][0] = () => {}; } };
+  globalThis.document = { visibilityState: 'visible', addEventListener: (t, f) => { docH[t] = f; }, createElement: () => ({}) };
   const { createAudio } = await import('../src/audio.js');
   const a = createAudio(null, {});
   a.unlock();
   for (const hide of [() => { document.visibilityState = 'hidden'; docH.visibilitychange(); }, () => winH.pagehide(), () => winH.blur()]) {
-    calls.length = 0;
+    calls.length = 0; timers.length = 0;
     hide();
-    expect(calls).toContain('suspend');
+    // まず音量をなめらかに0へ。止めるのは、そのあと(タイマー)
+    expect(calls).toContain('ramp:0');
+    expect(calls).not.toContain('suspend');
+    expect(timers.length).toBe(1);
+    expect(timers[0][1]).toBeGreaterThanOrEqual(60);
+    timers[0][0]();
+    expect(calls.indexOf('suspend')).toBeGreaterThan(calls.indexOf('ramp:0'));
     expect(a._masterGain()).toBe(0);
     calls.length = 0;
-    document.visibilityState = 'visible'; (docH.visibilitychange)(); winH.focus?.(); winH.pageshow?.();
+    document.visibilityState = 'visible'; docH.visibilitychange(); winH.focus?.(); winH.pageshow?.();
     expect(calls).toContain('resume');
+    expect(calls.some((c) => c.startsWith('ramp:') && c !== 'ramp:0')).toBe(true);
     expect(a._masterGain()).toBeGreaterThan(0);
   }
   delete globalThis.window; delete globalThis.document;

@@ -68,17 +68,25 @@ export function createAudio(storage, nav = globalThis.navigator, { context = nul
         master = ctx.createGain(); master.gain.value = muted ? 0 : 0.9; master.connect(ctx.destination);
         const revive = () => { if (!away && ctx.state !== 'running') { try { ctx.resume()?.catch?.(() => {}); } catch {} } };
         ctx.onstatechange = revive;
-        // 画面を切り替えたら、その場で音量を0にして止める。戻ったら再開する
+        // 画面を切り替えたら、音量をなめらかに0へ下げてから止める(いきなり止めると iPhone で「ピー」と鳴る)。
+        // 戻ったら再開して、なめらかに音量を戻す
+        let stopTimer = null;
+        const fadeTo = (v, sec) => {
+          const g = master.gain, t = ctx.currentTime;
+          try { g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); g.linearRampToValueAtTime(v, t + sec); } catch { g.value = v; }
+        };
         const hide = () => {
+          if (away) return;
           away = true;
-          try { master.gain.value = 0; } catch {}
-          try { ctx.suspend()?.catch?.(() => {}); } catch {}
+          fadeTo(0, 0.06);
+          stopTimer = window.setTimeout(() => { try { ctx.suspend()?.catch?.(() => {}); } catch {} }, 90);
         };
         const show = () => {
-          if ((globalThis.document?.visibilityState ?? 'visible') !== 'visible') return;
+          if ((globalThis.document?.visibilityState ?? 'visible') !== 'visible' || !away) return;
           away = false;
-          try { master.gain.value = muted ? 0 : 0.9; } catch {}
+          window.clearTimeout?.(stopTimer);
           revive();
+          fadeTo(muted ? 0 : 0.9, 0.3);
         };
         globalThis.document?.addEventListener?.('visibilitychange', () => (document.visibilityState === 'hidden' ? hide() : show()));
         window.addEventListener?.('pagehide', hide);
