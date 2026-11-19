@@ -11,4 +11,5 @@ export const firebaseConfig = {
   appId: '',
 };
 export const appCheckSiteKey = '';
-export const GAME_URL = 'https://nagashinocat.github.io/chounouryokusha-maker/';
+export const GAME_TITLE = '超能力者の証明';
+export const GAME_URL = 'https://nagashinocat.github.io/chounouryokusha-no-shoumei/';

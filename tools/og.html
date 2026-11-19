@@ -8,7 +8,7 @@ const sp = g.createLinearGradient(0, 0, 0, H); sp.addColorStop(0, 'rgba(255,240,
 g.fillStyle = sp; g.beginPath(); g.moveTo(W/2-90,0); g.lineTo(W/2+90,0); g.lineTo(W/2+420,H); g.lineTo(W/2-420,H); g.fill();
 const rg = g.createRadialGradient(W/2, 330, 20, W/2, 330, 520); rg.addColorStop(0,'rgba(150,10,25,.5)'); rg.addColorStop(1,'rgba(0,0,0,0)'); g.fillStyle = rg; g.fillRect(0,0,W,H);
 g.textAlign = 'center';
-g.fillStyle = '#ff2b3a'; g.font = 'bold 96px "Noto Serif CJK JP","Noto Serif JP",serif'; g.fillText('超能力者メーカー', W/2, 215);
+g.fillStyle = '#ff2b3a'; g.font = 'bold 96px "Noto Serif CJK JP","Noto Serif JP",serif'; g.fillText('超能力者の証明', W/2, 215);
 g.fillStyle = '#ddd'; g.font = '34px "Noto Sans CJK JP",sans-serif';
 g.fillText('なぜか、全人類に超能力者だと信じさせなければならなくなった。', W/2, 300);
 ['circle','plus','wave','star'].forEach((s, i) => {

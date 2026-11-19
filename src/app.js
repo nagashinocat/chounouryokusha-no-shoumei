@@ -93,5 +93,7 @@ export async function startGame({ stage, cards, audience, ui, params, audio = nu
   };
 
   const flow = createFlow({ counter, storage, view, rig, audio });
+  hud.show(false);
+  await screens.title();
   for (;;) await flow.start();
 }

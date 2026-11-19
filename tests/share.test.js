@@ -4,14 +4,14 @@ import { oddsFor } from '../src/odds.js';
 
 const result = { maxStreak: 10, odds: oddsFor(10), cleared: false, vanishedNumber: 12345, believers: 500, rounds: 30, challenger: { label: '挑戦者 No.0001 佐藤 健一(38) 会社員' } };
 const blob = { type: 'image/png' };
-const URL_ = 'https://nagashinocat.github.io/chounouryokusha-maker/';
+const URL_ = 'https://nagashinocat.github.io/chounouryokusha-no-shoumei/';
 
 it('uses Web Share with the image when files can be shared', async () => {
   const share = vi.fn(async () => {});
   const env = { navigator: { canShare: () => true, share }, File: class { constructor(p, n, o) { this.name = n; this.type = o.type; } }, open: vi.fn() };
   expect(await shareResult(blob, result, URL_, env)).toBe('shared');
   const arg = share.mock.calls[0][0];
-  expect(arg.files[0].name).toBe('chounouryokusha-maker.png');
+  expect(arg.files[0].name).toBe('chounouryokusha-no-shoumei.png');
   expect(arg.text).toContain('10連続');
 });
 
@@ -26,6 +26,7 @@ it('share text includes streak and odds; X url is encoded', () => {
   const t = shareText(result);
   expect(t).toContain('10連続');
   expect(t).toContain('1/1,048,576');
+  expect(t.startsWith('【超能力者の証明】')).toBe(true);
   const u = new URL(xIntentUrl(t, URL_));
   expect(u.origin + u.pathname).toBe('https://x.com/intent/post');
   expect(u.searchParams.get('text')).toBe(t);
@@ -47,4 +48,10 @@ it('prepared share calls navigator.share synchronously inside the tap (iOS)', as
   const p = h.share(null);
   expect(calledSync).toBe(true); // await より前に呼ばれている
   expect(await p).toBe('shared');
+});
+
+it('game URL and name use the new title', async () => {
+  const { GAME_URL, GAME_TITLE } = await import('../src/config.js');
+  expect(GAME_TITLE).toBe('超能力者の証明');
+  expect(GAME_URL).toBe('https://nagashinocat.github.io/chounouryokusha-no-shoumei/');
 });

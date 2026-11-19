@@ -4,6 +4,28 @@ const fmt = (n) => Math.round(n).toLocaleString('en-US');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
+// 書き殴った赤い目を1つ、小さなキャンバスに描いておく(スタート画面の背景用)
+function eyeSprite(w) {
+  const c = document.createElement('canvas'); c.width = w * 2.6; c.height = w * 1.8;
+  const g = c.getContext('2d'), cx = c.width / 2, cy = c.height / 2;
+  const j = (v, a) => v + (Math.random() - 0.5) * a;
+  g.lineCap = 'round'; g.shadowColor = '#ff1a10'; g.shadowBlur = w * 0.25;
+  for (let p = 0; p < 6; p++) {
+    g.strokeStyle = `rgba(255,${25 + Math.random() * 30},20,${0.5 + Math.random() * 0.5})`;
+    g.lineWidth = Math.max(1, w * (0.03 + Math.random() * 0.04));
+    g.beginPath();
+    for (let i = 0; i <= 36; i++) {
+      const a = (i / 36) * Math.PI * 2 + p * 0.4;
+      const x = cx + Math.cos(a) * w * j(1, 0.15), y = cy + Math.sin(a) * w * 0.42 * j(1, 0.2);
+      i ? g.lineTo(j(x, w * 0.06), j(y, w * 0.06)) : g.moveTo(x, y);
+    }
+    g.stroke();
+  }
+  g.strokeStyle = '#ff2a1a';
+  for (let i = 0; i < 18; i++) { g.lineWidth = Math.max(1, w * 0.04); g.beginPath(); g.arc(j(cx, w * 0.1), j(cy, w * 0.08), w * (0.06 + Math.random() * 0.22), Math.random() * 6, Math.random() * 6 + 3); g.stroke(); }
+  return c;
+}
+
 export function createScreens(ui) {
   const layer = document.createElement('div');
   layer.className = 'screens';
@@ -26,6 +48,49 @@ export function createScreens(ui) {
 
   return {
     clear,
+    // スタート画面：黒地の真ん中に縦書きで題字、後ろで信者の目がぼんやり光る。どこかをタップで進む
+    title(text = '超能力者の証明') {
+      const s = mount(`<canvas></canvas><div class="title-text">${esc(text)}</div><p class="title-hint">画面をタップ</p>`, 'title-screen interactive');
+      s.dataset.title = '';
+      const cv = s.querySelector('canvas'), g = cv.getContext('2d');
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      let eyes = [], alive = true;
+      const layout = () => {
+        cv.width = innerWidth * dpr; cv.height = innerHeight * dpr;
+        const n = Math.round(10 + (innerWidth * innerHeight) / 40000);
+        eyes = Array.from({ length: n }, () => {
+          // 題字の真後ろ(中央の帯)は避けて散らす
+          let x; do { x = Math.random(); } while (Math.abs(x - 0.5) < 0.2);
+          const w = (14 + Math.random() * 30) * dpr;
+          return { x: x * cv.width, y: Math.random() * cv.height, img: eyeSprite(w), ph: Math.random() * 6.3, sp: 0.4 + Math.random() * 0.6, blink: 0, next: 1 + Math.random() * 6 };
+        });
+      };
+      layout(); addEventListener('resize', layout);
+      let last = performance.now();
+      const draw = (now) => {
+        if (!alive) return;
+        const dt = Math.min(0.1, (now - last) / 1000); last = now;
+        g.clearRect(0, 0, cv.width, cv.height);
+        g.filter = `blur(${1.6 * dpr}px)`; // ぼんやり
+        for (const e of eyes) {
+          e.next -= dt; if (e.next <= 0) { e.blink = 0.22; e.next = 3 + Math.random() * 7; }
+          e.blink = Math.max(0, e.blink - dt);
+          const open = e.blink > 0 ? Math.abs(Math.cos((e.blink / 0.22) * Math.PI)) : 1;
+          g.globalAlpha = 0.18 + 0.22 * (0.5 + 0.5 * Math.sin(now / 1000 * e.sp + e.ph));
+          const w = e.img.width, h = e.img.height * Math.max(0.06, open);
+          g.drawImage(e.img, e.x - w / 2, e.y - h / 2, w, h);
+        }
+        g.globalAlpha = 1; g.filter = 'none';
+        requestAnimationFrame(draw);
+      };
+      requestAnimationFrame(draw);
+      return new Promise((resolve) => {
+        s.addEventListener('click', async () => {
+          s.classList.remove('in'); await sleep(500);
+          alive = false; removeEventListener('resize', layout); clear(); resolve();
+        }, { once: true });
+      });
+    },
     async story(lines, button, { dark = true } = {}) {
       const s = mount(`${lines.map((_, i) => `<p class="line l${i}"></p>`).join('')}<button class="interactive btn" hidden>${esc(button)}</button>`, dark ? 'dark' : '');
       const ps = s.querySelectorAll('p');

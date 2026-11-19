@@ -1,4 +1,4 @@
-# 超能力者メーカー
+# 超能力者の証明
 
 なぜか、あなたは全人類に超能力者だと信じさせなければならなくなった。
 モニターに映ったマークを、伏せた4枚のカードから勘だけで当て続けるデスゲーム調の3Dブラウザゲーム。
@@ -32,7 +32,7 @@ Firebase を設定しなくても遊べます(その場合、世界人口はそ�
 
 ### 2. GitHub Pages
 
-1. GitHub に公開リポジトリ `nagashinocat/chounouryokusha-maker` を作って push
+1. GitHub に公開リポジトリ `nagashinocat/chounouryokusha-no-shoumei` を作って push
 2. Settings → Pages → Branch: `main` / `/ (root)` で公開
 3. URL が違う場合は `index.html` の `og:url` `og:image` と `src/config.js` の `GAME_URL` を書き換える
 

@@ -5,6 +5,8 @@ test.use({ launchOptions: { executablePath: '/usr/bin/google-chrome', args: ['--
 
 test('a touch tap on 始める starts the audio and the music box', async ({ page }) => {
   await page.goto('/index.html?debug=miss');
+  const t = await page.locator('[data-title]').boundingBox();
+  await page.touchscreen.tap(t.x + t.width / 2, t.y + t.height / 2);
   const btn = page.getByRole('button', { name: '始める' });
   await btn.waitFor();
   const box = await btn.boundingBox();

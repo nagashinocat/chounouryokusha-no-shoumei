@@ -1,11 +1,11 @@
 import { drawSymbol } from './scene/symbols.js';
-import { GAME_URL, SYMBOLS } from './config.js';
+import { GAME_URL, GAME_TITLE, SYMBOLS } from './config.js';
 
 const fmt = (n) => Math.round(n).toLocaleString('en-US');
 
 export function shareText(r) {
   const head = r.cleared ? '全人類に超能力者だと信じさせた。' : r.vanishedNumber != null ? `${fmt(r.vanishedNumber)}人目の消えた挑戦者になった。` : '';
-  return `【超能力者メーカー】最大${r.maxStreak}連続で的中（確率 ${r.odds.percentText}）。${r.odds.analogy}のと同じくらいの確率らしい。${head}`;
+  return `【${GAME_TITLE}】最大${r.maxStreak}連続で的中（確率 ${r.odds.percentText}）。${r.odds.analogy}のと同じくらいの確率らしい。${head}`;
 }
 
 export function xIntentUrl(text, url) {
@@ -18,8 +18,8 @@ export async function shareResult(blob, result, url = GAME_URL, env = globalThis
   const text = shareText(result);
   const nav = env.navigator;
   try {
-    const file = new env.File([blob], 'chounouryokusha-maker.png', { type: 'image/png' });
-    const data = { files: [file], text, url, title: '超能力者メーカー' };
+    const file = new env.File([blob], 'chounouryokusha-no-shoumei.png', { type: 'image/png' });
+    const data = { files: [file], text, url, title: GAME_TITLE };
     if (nav?.canShare?.({ files: [file] }) && nav.share) {
       await nav.share(data);
       return 'shared';
@@ -46,7 +46,7 @@ export function drawResultImage(r, canvas = document.createElement('canvas')) {
   g.fillStyle = sp; g.beginPath(); g.moveTo(W / 2 - 120, 0); g.lineTo(W / 2 + 120, 0); g.lineTo(W / 2 + 460, H); g.lineTo(W / 2 - 460, H); g.fill();
 
   g.textAlign = 'center'; g.fillStyle = '#ff2b3a';
-  g.font = `bold 64px ${serif}`; g.fillText('超 能 力 者 メ ー カ ー', W / 2, 140);
+  g.font = `bold 64px ${serif}`; g.fillText([...GAME_TITLE].join(' '), W / 2, 140);
   g.fillStyle = '#aaa'; g.font = `32px ${sans}`; g.fillText(r.challenger.label, W / 2, 215);
 
   g.fillStyle = '#ccc'; g.font = `40px ${sans}`; g.fillText('最大連続', W / 2, 340);
@@ -96,7 +96,7 @@ export function prepareShare(result, makeBlob = drawResultImage, env = globalThi
 
 function showFallback(fallbackEl, url, result) {
   fallbackEl.innerHTML = `<img src="${url}" alt="結果画像" style="width:70%;border:1px solid #333;margin:.6em 0"><br>
-    <a href="${url}" download="chounouryokusha-maker.png">画像を保存する</a>
+    <a href="${url}" download="chounouryokusha-no-shoumei.png">画像を保存する</a>
     <a href="${xIntentUrl(shareText(result), GAME_URL)}" target="_blank" rel="noopener">Xに投稿する</a>`;
   fallbackEl.hidden = false;
 }
