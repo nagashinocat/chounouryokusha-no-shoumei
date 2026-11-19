@@ -8,3 +8,8 @@ it('debug rig/miss only on localhost', () => {
   expect(debugMode(p('?debug=miss'), 'localhost')).toBe('miss');
   expect(debugMode(p('?debug=x'), 'localhost')).toBe(null);
 });
+it('fatemiss mode on localhost only', () => {
+  const p = new URLSearchParams('?debug=fatemiss');
+  expect(debugMode(p, '127.0.0.1')).toBe('fatemiss');
+  expect(debugMode(p, 'nagashinocat.github.io')).toBe(null);
+});

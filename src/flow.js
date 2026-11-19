@@ -14,7 +14,8 @@ function shuffle(arr, pick) {
 }
 
 // view は描画側の窓口。rig は 'rig'(必ず当たり)/'miss'(必ず外れ)/null。
-export function createFlow({ counter, storage, view, pick = randomIndex, rig = null, audio = null }) {
+// rigFn はテスト用：毎回 'hit' か 'miss' を返す関数
+export function createFlow({ counter, storage, view, pick = randomIndex, rig = null, rigFn = null, audio = null }) {
   const sfx = (name) => audio?.play(name);
   return {
     async start() {
@@ -34,7 +35,7 @@ export function createFlow({ counter, storage, view, pick = randomIndex, rig = n
         if (fate) { sfx('heartbeat'); await view.fateRound(game); }
         await view.dealRound(symbols, target, correct, { fate });
         const index = await view.waitPick();
-        const hit = rig === 'rig' ? true : rig === 'miss' ? false : index === correct;
+        const hit = rigFn ? rigFn() === 'hit' : rig === 'rig' ? true : rig === 'miss' ? false : rig === 'fatemiss' ? !fate : index === correct;
         const before = game.believers;
         game = applyGuess(game, hit);
         if (hit) { sfx('cheer'); await view.showHit(game, index, { fate }); }

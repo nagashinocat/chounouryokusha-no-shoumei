@@ -33,3 +33,15 @@ test('always hit: fate round then clear', async ({ page }) => {
   await page.screenshot({ path: 'test-results/clear.png' });
   await expect(page.locator('[data-result]')).toBeVisible({ timeout: 20000 });
 });
+
+test('missing the fate round ends the game', async ({ page }) => {
+  test.setTimeout(240000);
+  await page.goto('/index.html?debug=fatemiss');
+  await page.locator('[data-title]').click();
+  await page.getByRole('button', { name: '始める' }).click();
+  for (let i = 0; i < 15; i++) await tapCard(page, i % 4);
+  await expect(page.locator('[data-fate]')).toBeVisible({ timeout: 20000 });
+  await tapCard(page, 2);
+  await expect(page.getByText('その後、人口が一人減ったが誰も気づくことはなかった。')).toBeVisible({ timeout: 20000 });
+  await expect(page.locator('[data-result]')).toBeVisible({ timeout: 20000 });
+});

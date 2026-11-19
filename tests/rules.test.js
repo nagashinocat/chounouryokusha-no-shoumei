@@ -69,3 +69,20 @@ describe('miss limit', () => {
     expect(MAX_MISSES).toBe(16);
   });
 });
+
+describe('fate round is the last round', () => {
+  it('a miss on the fate round ends the game even with lives and believers left', () => {
+    const g = { ...createGame({ population: 100 }), believers: 30 };
+    expect(isFateRound(g)).toBe(true);
+    const after = applyGuess(g, false);
+    expect(after.status).toBe('over');
+    expect(after.misses).toBe(1);
+    expect(after.believers).toBeGreaterThan(0);
+  });
+  it('a hit on the fate round clears', () => {
+    expect(applyGuess({ ...createGame({ population: 100 }), believers: 30 }, true).status).toBe('cleared');
+  });
+  it('a miss before the fate round keeps playing', () => {
+    expect(applyGuess({ ...createGame({ population: 100 }), believers: 20 }, false).status).toBe('playing');
+  });
+});

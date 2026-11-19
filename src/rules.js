@@ -22,6 +22,7 @@ export function applyGuess(game, hit) {
   }
   const believers = Math.floor((game.believers * 3) / 4);
   const misses = game.misses + 1;
-  const over = believers <= 0 || misses >= MAX_MISSES;
+  // 運命の選択は一度きり。外したらそこで終わり
+  const over = believers <= 0 || misses >= MAX_MISSES || isFateRound(game);
   return { ...game, believers, misses, streak: 0, rounds, status: over ? 'over' : 'playing' };
 }

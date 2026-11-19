@@ -100,3 +100,20 @@ it('plays sounds: cheer on hit, leave on miss, heartbeat on fate', async () => {
   expect(played).toContain('heartbeat');
   expect(played).toContain('clear');
 });
+
+it('missing the fate round is game over (one vanish), not another round', async () => {
+  const storage = createStorage(mem());
+  let increments = 0, n = 0;
+  const backend = { getCount: async () => 8_200_000_000 - 100, increment: async () => ++increments };
+  const view = fakeView();
+  // 2回当ててから(4→16→64)、運命の選択で外す
+  const rig = { next: () => (n++ < 2 ? 'hit' : 'miss') };
+  const flow = createFlow({ counter: createCounter({ backend, storage }), storage, view, pick: () => 0, rigFn: () => rig.next() });
+  const r = await flow.start();
+  const names = view.names();
+  expect(names.filter((x) => x === 'fateRound').length).toBe(1);
+  expect(names.filter((x) => x === 'dealRound').length).toBe(3);
+  expect(names).toContain('showGameOver');
+  expect(increments).toBe(1);
+  expect(r.cleared).toBe(false);
+});
