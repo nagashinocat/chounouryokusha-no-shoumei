@@ -43,7 +43,7 @@ async function boot() {
     window.__debug.ready = true;
     return;
   }
-  const { startGame } = await import('./app.js');
-  startGame({ stage, cards, audience, ui, params });
+  const [{ startGame }, { shareFromResult }] = await Promise.all([import('./app.js'), import('./share.js')]);
+  startGame({ stage, cards, audience, ui, params, share: shareFromResult });
 }
 boot();
