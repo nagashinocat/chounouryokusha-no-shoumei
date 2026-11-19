@@ -22,7 +22,7 @@ export function noteFreq(name) {
   const midi = 12 * (Number(m[3]) + 1) + NOTE[m[1]] + (m[2] ? 1 : 0);
   return 440 * Math.pow(2, (midi - 69) / 12);
 }
-export function createAudio(storage) {
+export function createAudio(storage, nav = globalThis.navigator) {
   let ctx = null, master = null;
   let muted = storage?.get('cm.muted') === '1';
 
@@ -142,16 +142,34 @@ export function createAudio(storage) {
   }
 
   return {
-    unlock() { if (ensure() && ctx.state !== 'running') ctx.resume(); },
+    // タップの処理の中で同期的に呼ぶこと(iOS は指を離したタップでしか音を許さない)
+    unlock() {
+      // iOS のマナーモードでも鳴るようにする(Safari 17 以降)
+      try { if (nav?.audioSession && nav.audioSession.type !== 'playback') nav.audioSession.type = 'playback'; } catch {}
+      if (!ensure()) return;
+      if (ctx.state !== 'running') {
+        try { ctx.resume(); } catch {}
+        // 無音を1つ鳴らして音声を起こす(古い iOS 向け)
+        try { const s = ctx.createBufferSource(); s.buffer = ctx.createBuffer(1, 1, 22050); s.connect(ctx.destination); s.start(0); } catch {}
+      }
+    },
     bgm(on) { if (on) startBgm(); },
     _tick(sec) { if (ctx) { const t = ctx.currentTime; for (let x = 0; x <= sec; x += 0.25) { ctx.currentTime = t + x; schedule(1.2); } } },
     play(name) { if (!ensure() || muted) return; try { sounds[name]?.(); } catch {} },
     get muted() { return muted; },
+    get state() { return ctx ? ctx.state : 'none'; },
+    get bgmPlaying() { return !!box; },
     setMuted(m) {
       muted = m; storage?.set('cm.muted', m ? '1' : '0');
       if (master) master.gain.setTargetAtTime(m ? 0 : 0.9, ctx.currentTime, 0.05);
     },
   };
+}
+
+export function installUnlock(target, audio) {
+  const fn = () => audio.unlock();
+  for (const type of ['touchend', 'click', 'pointerdown', 'keydown']) target.addEventListener(type, fn, { capture: true, passive: true });
+  // 別のアプリから戻ったとき(iOS の interrupted)も、次のタップで再開できるようにしておく
 }
 
 export function mountMuteButton(ui, audio) {
