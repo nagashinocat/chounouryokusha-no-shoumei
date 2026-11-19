@@ -15,7 +15,7 @@ Firebase を設定しなくても遊べます(その場合、世界人口はそ�
 ### 1. Firebase
 
 1. [Firebase コンソール](https://console.firebase.google.com/)でプロジェクトを作る(無料の Spark プランのままでよい)
-2. 「アプリを追加」→ ウェブ。表示された設定値のうち `apiKey` `authDomain` `projectId` `appId` を `src/config.js` の `firebaseConfig` に書き込む
+2. 「アプリを追加」→ ウェブ。設定値は `src/config.js` に書き込み済み(プロジェクト `chounouryokusha-no-shoum-2de1b`)
 3. Authentication → ログイン方法 → **匿名** を有効にする
 4. Firestore Database を作成する(本番モード、リージョンは `asia-northeast1` など)
 5. Firestore に文書を1つ手で作る：コレクション `meta`、ドキュメントID `vanished`、フィールド `count`(number)= `0`
@@ -23,7 +23,6 @@ Firebase を設定しなくても遊べます(その場合、世界人口はそ�
    ```bash
    npm install
    npx firebase login
-   npx firebase use --add        # 作ったプロジェクトを選ぶ
    npm run test:rules            # ルールのテスト(Java が必要)
    npx firebase deploy --only firestore:rules
    ```

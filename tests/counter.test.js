@@ -38,3 +38,10 @@ it('reportVanished increments live, or bumps local on failure', async () => {
   const bad = { getCount: async () => 0, increment: async () => { throw new Error('denied'); } };
   expect(await createCounter({ backend: bad, storage }).reportVanished()).toEqual({ vanished: 42, live: false });
 });
+
+it('the real Firebase project is configured', async () => {
+  const { isConfigured } = await import('../src/counter.js');
+  const { firebaseConfig } = await import('../src/config.js');
+  expect(firebaseConfig.projectId).toBe('chounouryokusha-no-shoum-2de1b');
+  expect(isConfigured(firebaseConfig)).toBe(true);
+});

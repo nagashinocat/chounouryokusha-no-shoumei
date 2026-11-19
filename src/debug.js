@@ -5,3 +5,8 @@ export function debugMode(params, hostname) {
   const d = params.get('debug');
   return d === 'rig' || d === 'miss' || d === 'fatemiss' ? d : null;
 }
+
+// 手元(localhost)で動かすときは本物の共有カウンターを使わない(テストで世界人口を減らさない)
+export function useSharedCounter(hostname) {
+  return !LOCAL.has(hostname);
+}

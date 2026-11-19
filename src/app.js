@@ -4,12 +4,12 @@ import { createFlow } from './flow.js';
 import { createHud } from './ui/hud.js';
 import { createScreens } from './ui/screens.js';
 import { createFx } from './scene/fx.js';
-import { debugMode } from './debug.js';
+import { debugMode, useSharedCounter } from './debug.js';
 import { layersForTier } from './audio.js';
 
 export async function startGame({ stage, cards, audience, ui, params, audio = null, share = null }) {
   const storage = createStorage();
-  const counter = createCounter({ backend: firebaseBackend(), storage });
+  const counter = createCounter({ backend: useSharedCounter(location.hostname) ? firebaseBackend() : null, storage });
   const hud = createHud(ui);
   const screens = createScreens(ui);
   const fx = createFx(stage, cards, audience);

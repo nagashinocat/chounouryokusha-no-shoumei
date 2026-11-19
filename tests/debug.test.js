@@ -13,3 +13,9 @@ it('fatemiss mode on localhost only', () => {
   expect(debugMode(p, '127.0.0.1')).toBe('fatemiss');
   expect(debugMode(p, 'nagashinocat.github.io')).toBe(null);
 });
+it('the shared counter is not used from localhost (tests never touch the real count)', async () => {
+  const { useSharedCounter } = await import('../src/debug.js');
+  expect(useSharedCounter('127.0.0.1')).toBe(false);
+  expect(useSharedCounter('localhost')).toBe(false);
+  expect(useSharedCounter('nagashinocat.github.io')).toBe(true);
+});
