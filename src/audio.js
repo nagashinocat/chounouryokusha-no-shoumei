@@ -1,18 +1,18 @@
 // すべて WebAudio で合成する(外部の音声ファイルなし)。
 
-// ボイスメモの鼻歌を書き起こした旋律(120BPM、8分音符単位)。[開始ステップ, MIDI]
-// ホ短調(自然短音階＋導音D#)にそろえ、半音高くずれた2回目のフレーズは1回目の調に戻してある。
+// ボイスメモ(3つ目)の鼻歌を書き起こした旋律(115BPM、8分音符単位)。[開始ステップ, MIDI]
+// イ短調(自然短音階＋導音G#)にそろえ、半音高くずれた2回目のフレーズは1回目の調に戻してある。
 // 歌った音を2オクターブ上げてオルゴールの音域にし、8小節でループする。
 const SUNG = [
-  [0, 54], [2, 63], [4, 59], [5, 62], [6, 63], [7, 62], [8, 57], [9, 62], [10, 60],
-  [12, 55], [13, 59], [14, 59], [16, 57], [17, 55], [18, 52], [21, 54], [22, 55],
-  [24, 54], [25, 52], [26, 51], [28, 50], [29, 51], [30, 52],
-  [32, 57], [33, 63], [34, 63], [36, 60], [37, 63], [38, 62], [40, 57], [41, 62], [42, 60],
-  [44, 57], [45, 59], [46, 59], [47, 57], [48, 57], [49, 55], [50, 51], [51, 52],
-  [52, 52], [53, 55], [54, 55], [56, 55], [57, 52], [58, 51], [59, 51], [61, 51], [62, 52],
+  [0, 60], [1, 64], [2, 62], [4, 56], [5, 62], [6, 62], [8, 57], [9, 62], [10, 60],
+  [12, 55], [13, 57], [14, 59], [16, 59], [17, 56], [18, 53], [20, 53], [21, 56], [22, 56],
+  [24, 55], [25, 53], [26, 52], [28, 50], [29, 52], [30, 53],
+  [32, 57], [33, 64], [34, 64], [36, 59], [37, 64], [38, 62], [40, 57], [41, 62], [42, 62],
+  [44, 56], [45, 59], [46, 59], [48, 59], [49, 57], [50, 53], [52, 53], [53, 56], [54, 56],
+  [56, 53], [57, 52], [59, 50], [60, 53], [61, 53], [62, 53],
 ];
 export const LOOP_STEPS = 64;
-export const STEP_SEC = 60 / 120 / 2;
+export const STEP_SEC = 60 / 115 / 2;
 export const MELODY = SUNG.map(([st, m], i) => {
   const next = i + 1 < SUNG.length ? SUNG[i + 1][0] : LOOP_STEPS;
   return [st, m + 24, Math.min(next - st, 2)];
@@ -20,18 +20,22 @@ export const MELODY = SUNG.map(([st, m], i) => {
 const melodyAt = new Map(MELODY.map((e) => [e[0], e]));
 const midiFreq = (m) => 440 * Math.pow(2, (m - 69) / 12);
 
-// 小節ごとの和音：ホ短調の和音から、その小節の旋律にいちばん合うものを選ぶ
-const CANDIDATES = [
-  { name: 'Em', root: 4, tones: [4, 7, 11] }, { name: 'Am', root: 9, tones: [9, 0, 4] },
-  { name: 'B', root: 11, tones: [11, 3, 6] }, { name: 'C', root: 0, tones: [0, 4, 7] },
-  { name: 'D', root: 2, tones: [2, 6, 9] }, { name: 'G', root: 7, tones: [7, 11, 2] },
+// 小節ごとの和音：イ短調の和音から、その小節の旋律にいちばん合うものを選ぶ
+export const CHORD_CANDIDATES = [
+  { name: 'Am', root: 9, tones: [9, 0, 4] }, { name: 'Dm', root: 2, tones: [2, 5, 9] },
+  { name: 'E', root: 4, tones: [4, 8, 11] }, { name: 'F', root: 5, tones: [5, 9, 0] },
+  { name: 'C', root: 0, tones: [0, 4, 7] }, { name: 'G', root: 7, tones: [7, 11, 2] },
 ];
 export const CHORDS = Array.from({ length: 8 }, (_, bar) => {
-  if (bar === 7) return CANDIDATES[0]; // 最後は主和音で落ち着かせる
   const notes = MELODY.filter(([st]) => st >= bar * 8 && st < bar * 8 + 8);
-  let best = CANDIDATES[0], bestScore = -1;
-  for (const c of CANDIDATES) {
-    const sc = notes.reduce((t, [st, m, len]) => t + (c.tones.includes(m % 12) ? len + (st % 8 === 0 ? 1 : 0) : 0), 0);
+  let best = CHORD_CANDIDATES[0], bestScore = -Infinity;
+  for (const c of CHORD_CANDIDATES) {
+    // 旋律と半音でぶつかる音は大きく減点(聴き心地を優先)
+    const sc = notes.reduce((t, [st, m, len]) => {
+      if (c.tones.includes(m % 12)) return t + len + (st % 8 === 0 ? 1 : 0);
+      if (c.tones.some((x) => [1, 11].includes(((m - x) % 12 + 12) % 12))) return t - 10 * len;
+      return t;
+    }, 0);
     if (sc > bestScore) { best = c; bestScore = sc; }
   }
   return best;

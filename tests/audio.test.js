@@ -36,22 +36,22 @@ it('the score loops 8 bars of the voice-memo melody in music-box register', asyn
     expect(midi).toBeGreaterThanOrEqual(72); expect(midi).toBeLessThanOrEqual(91);
     expect(len).toBeGreaterThan(0);
   }
-  // 2つ目のボイスメモ：頭はF#、終わりは主音Eで落ち着く(2オクターブ上げたもの)
-  expect(MELODY[0]).toEqual([0, 54 + 24, 2]);
-  expect(MELODY.at(-1)).toEqual([62, 52 + 24, 2]);
-  expect(MELODY.length).toBe(49);
+  // 3つ目のボイスメモ：頭はC、終わりはF(2オクターブ上げたもの)
+  expect(MELODY[0]).toEqual([0, 60 + 24, 1]);
+  expect(MELODY.at(-1)).toEqual([62, 53 + 24, 2]);
+  expect(MELODY.length).toBe(48);
 });
 
-it('melody stays in E minor (plus the leading tone D#) so it is eerie but not queasy', async () => {
+it('melody stays in A minor (plus the leading tone G#) so it is eerie but not queasy', async () => {
   const { MELODY } = await import('../src/audio.js');
-  const allowed = new Set([4, 6, 7, 9, 11, 0, 2, 3]); // E F# G A B C D D#
+  const allowed = new Set([9, 11, 0, 2, 4, 5, 7, 8]); // A B C D E F G G#
   for (const [, m] of MELODY) expect(allowed.has(m % 12)).toBe(true);
 });
 
-it('backing follows E-minor chords: bass, pad and choir only use chord tones', async () => {
+it('backing follows A-minor chords: bass, pad and choir only use chord tones', async () => {
   const { eventsAt, CHORDS } = await import('../src/audio.js');
   expect(CHORDS.length).toBe(8);
-  const diatonic = { E: 4, A: 9, B: 11, C: 0, D: 2, G: 7 };
+  const diatonic = { A: 9, D: 2, E: 4, F: 5, C: 0, G: 7 };
   for (const c of CHORDS) expect(Object.values(diatonic)).toContain(c.root % 12);
   for (let st = 0; st < 64; st++) {
     const chord = CHORDS[Math.floor(st / 8)];
@@ -61,6 +61,17 @@ it('backing follows E-minor chords: bass, pad and choir only use chord tones', a
       }
     }
   }
+});
+
+it('each bar picks a chord with the fewest semitone clashes against the melody', async () => {
+  const { MELODY, CHORDS, CHORD_CANDIDATES } = await import('../src/audio.js');
+  const clashLen = (c, bar) => MELODY.filter(([st]) => st >= bar * 8 && st < bar * 8 + 8)
+    .filter(([, m]) => c.tones.some((t) => [1, 11].includes(((m - t) % 12 + 12) % 12)))
+    .reduce((a, [, , len]) => a + len, 0);
+  CHORDS.forEach((c, bar) => {
+    const least = Math.min(...CHORD_CANDIDATES.map((k) => clashLen(k, bar)));
+    expect(`${bar}:${clashLen(c, bar)}`).toBe(`${bar}:${least}`);
+  });
 });
 
 it('layers add instruments; the first added is a kick going "dan, da-dan"', async () => {
