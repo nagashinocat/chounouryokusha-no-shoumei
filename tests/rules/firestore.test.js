@@ -41,3 +41,27 @@ it('anyone can read the count', async () => {
   const { getDoc } = await import('firebase/firestore');
   await assertSucceeds(getDoc(doc(env.unauthenticatedContext().firestore(), 'meta/vanished')));
 });
+
+// ---- 証明された者(全クリした人のニックネーム) ----
+const clear = (db, uid, data) => setDoc(doc(db, `clearers/${uid}`), data);
+it('a signed-in player can leave one nickname under their own uid', async () => {
+  const db = env.authenticatedContext('u1').firestore();
+  await assertSucceeds(clear(db, 'u1', { name: 'たろう', at: serverTimestamp() }));
+  await assertFails(clear(db, 'u1', { name: 'じろう', at: serverTimestamp() })); // 上書き不可
+});
+it('nickname rules: own uid, short, no URLs, no extra fields', async () => {
+  const db = env.authenticatedContext('u1').firestore();
+  await assertFails(clear(db, 'u2', { name: 'x', at: serverTimestamp() }));
+  await assertFails(clear(db, 'u1', { name: '', at: serverTimestamp() }));
+  await assertFails(clear(db, 'u1', { name: 'a'.repeat(25), at: serverTimestamp() }));
+  await assertFails(clear(db, 'u1', { name: 'http://spam', at: serverTimestamp() }));
+  await assertFails(clear(db, 'u1', { name: 'x', at: serverTimestamp(), extra: 1 }));
+  await assertFails(clear(env.unauthenticatedContext().firestore(), 'anon', { name: 'x', at: serverTimestamp() }));
+});
+it('anyone can read the list; nobody can delete from the app', async () => {
+  const { getDocs, collection, deleteDoc } = await import('firebase/firestore');
+  await assertSucceeds(getDocs(collection(env.unauthenticatedContext().firestore(), 'clearers')));
+  const db = env.authenticatedContext('u1').firestore();
+  await clear(db, 'u1', { name: 'x', at: serverTimestamp() });
+  await assertFails(deleteDoc(doc(db, 'clearers/u1')));
+});

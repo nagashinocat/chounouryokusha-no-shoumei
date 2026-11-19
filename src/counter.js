@@ -73,5 +73,18 @@ export function firebaseBackend(cfg = firebaseConfig) {
       const snap = await fs.getDoc(fs.doc(db, 'meta/vanished'));
       return snap.data()?.count ?? 0;
     },
+    // 証明された者：新しい順に30人まで
+    async listClearers() {
+      const { db, fs } = await init();
+      const q = fs.query(fs.collection(db, 'clearers'), fs.orderBy('at', 'desc'), fs.limit(30));
+      const snap = await fs.getDocs(q);
+      return snap.docs.map((d) => d.data().name).filter((n) => typeof n === 'string');
+    },
+    // 1人1回まで(ドキュメントIDが匿名ログインの uid)
+    async addClearer(name) {
+      const { a, auth, db, fs } = await init();
+      const user = a.currentUser ?? (await auth.signInAnonymously(a)).user;
+      await fs.setDoc(fs.doc(db, `clearers/${user.uid}`), { name, at: fs.serverTimestamp() });
+    },
   };
 }

@@ -99,6 +99,26 @@ export function createScreens(ui) {
       await waitClick(b);
       s.classList.remove('in'); await sleep(350); clear();
     },
+    // 全クリした人だけ：名前を残す(残さないことも選べる)。名前か null を返す
+    async nickname(max = 12) {
+      const s = mount(`<div class="nick interactive" data-nickname>
+          <p class="line">あなたの名を、証明として残せ。</p>
+          <p class="nick-sub">モニターに、認められた超能力者として流れ続けます(${max}文字まで)</p>
+          <input type="text" maxlength="${max}" autocomplete="off" enterkeyhint="done" placeholder="ニックネーム">
+          <p class="nick-err" hidden>その名前は刻めません。別の名前にしてください。</p>
+          <div class="btns"><button class="btn carve">刻む</button><button class="btn skip">残さない</button></div>
+        </div>`, 'dark');
+      const input = s.querySelector('input');
+      setTimeout(() => input.focus(), 400);
+      const answer = await new Promise((resolve) => {
+        const carve = () => { const v = input.value.trim(); if (v) resolve(v); else s.querySelector('.nick-err').hidden = false; };
+        s.querySelector('.carve').addEventListener('click', carve);
+        input.addEventListener('keydown', (e) => { if (e.key === 'Enter') carve(); });
+        s.querySelector('.skip').addEventListener('click', () => resolve(null));
+      });
+      s.classList.remove('in'); await sleep(350); clear();
+      return answer;
+    },
     banner(text, attrs = '', cls = '') {
       const s = mount(`<div class="banner ${cls}" ${attrs}>${esc(text)}</div>`, 'pass');
       return { el: s.firstElementChild, remove: () => { s.classList.remove('in'); setTimeout(() => { if (s.parentNode) clear(); }, 400); } };
@@ -129,6 +149,7 @@ export function createScreens(ui) {
             <dt>最終の信者</dt><dd><span class="r-bel">0</span>人</dd>
             <dt>めくった回数</dt><dd>${r.rounds}回</dd>
             ${r.vanishedNumber != null ? `<dt>消えた挑戦者</dt><dd>${fmt(r.vanishedNumber)}人目</dd>` : ''}
+            ${r.nickname ? `<dt>認められた超能力者</dt><dd>${esc(r.nickname)}</dd>` : ''}
             <dt>自己ベスト</dt><dd>${r.best}連続</dd>
           </dl>
           <div class="btns">

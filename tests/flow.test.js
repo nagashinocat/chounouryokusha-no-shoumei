@@ -117,3 +117,29 @@ it('missing the fate round is game over (one vanish), not another round', async 
   expect(increments).toBe(1);
   expect(r.cleared).toBe(false);
 });
+
+it('after a clear, the player is asked for a nickname before the result; skipping is allowed', async () => {
+  for (const answer of ['しょうめい', null]) {
+    const storage = createStorage(mem());
+    const backend = { getCount: async () => 8_200_000_000 - 100, increment: async () => 1 };
+    const view = fakeView();
+    view.askNickname = async () => { view.calls.push(['askNickname']); return answer; };
+    const submitted = [];
+    const hall = { fetchNames: async () => [], submit: async (n) => { submitted.push(n); return { ok: true, name: n }; } };
+    const r = await createFlow({ counter: createCounter({ backend, storage }), storage, view, rig: 'rig', pick: () => 0, hall }).start();
+    const names = view.names();
+    expect(names.indexOf('askNickname')).toBeGreaterThan(names.indexOf('showClear'));
+    expect(names.indexOf('askNickname')).toBeLessThan(names.indexOf('showResult'));
+    expect(submitted).toEqual(answer ? [answer] : []);
+    expect(r.nickname).toBe(answer);
+  }
+});
+
+it('a game over never asks for a nickname', async () => {
+  const storage = createStorage(mem());
+  const view = fakeView();
+  view.askNickname = async () => { view.calls.push(['askNickname']); return 'x'; };
+  const backend = { getCount: async () => 0, increment: async () => 1 };
+  await createFlow({ counter: createCounter({ backend, storage }), storage, view, rig: 'miss', pick: () => 0, hall: { fetchNames: async () => [], submit: async () => ({ ok: true }) } }).start();
+  expect(view.names()).not.toContain('askNickname');
+});

@@ -230,16 +230,17 @@ export function createAudience(stage) {
     }
   }
 
-  async function setTier(next) {
+  async function setTier(next, instant = false) {
     if (next === tier) return;
     const from = TIERS.indexOf(tier), to = TIERS.indexOf(next);
     tier = next;
     const walled = to <= 1;
     const pulled = stage.home.pos.clone().add(new THREE.Vector3(0, 1.4, 2.2));
-    const camOut = stage.moveCamera(pulled, stage.home.target, 0.6, ease.out);
+    // instant：新しいゲームの始まりなど。カメラは動かさず、舞台だけ一瞬で切り替える
+    const camOut = instant ? Promise.resolve() : stage.moveCamera(pulled, stage.home.target, 0.6, ease.out);
     // 壁と天井：スタジアム以上では沈んで消える
     const w0 = stage.walls[0].position.y, w1 = walled ? 3 : -3.2;
-    const wallAnim = stage.tween(0.9, (k) => {
+    const wallAnim = stage.tween(instant ? 0 : 0.9, (k) => {
       for (const w of stage.walls) { w.position.y = w0 + (w1 - w0) * k; w.visible = w.position.y > -3.1; }
       stage.ceiling.visible = walled;
     });
@@ -253,7 +254,7 @@ export function createAudience(stage) {
     if (to >= 2 && from < 2) { crowdShown = 0; cityShown = 0; }
     applyCounts(believers);
     await Promise.all([camOut, wallAnim]);
-    await stage.moveCamera(stage.home.pos, stage.home.target, 0.6, ease.inOut);
+    if (!instant) await stage.moveCamera(stage.home.pos, stage.home.target, 0.6, ease.inOut);
   }
 
   return {
@@ -261,10 +262,8 @@ export function createAudience(stage) {
     async setBelievers(n, { animate = true } = {}) {
       believers = n;
       const next = tierFor(Math.max(n, 1));
-      if (next !== tier) {
-        if (animate) await setTier(next);
-        else { await Promise.race([setTier(next), Promise.resolve()]); }
-      } else applyCounts(n);
+      if (next !== tier) await setTier(next, !animate);
+      else applyCounts(n);
     },
     cheer() {
       crowdFlash = 1;

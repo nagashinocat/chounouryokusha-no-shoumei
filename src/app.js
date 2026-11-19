@@ -1,5 +1,6 @@
 import { createStorage } from './storage.js';
 import { createCounter, firebaseBackend } from './counter.js';
+import { createHall, tickerText } from './hall.js';
 import { createFlow } from './flow.js';
 import { createHud } from './ui/hud.js';
 import { createScreens } from './ui/screens.js';
@@ -9,7 +10,11 @@ import { layersForTier } from './audio.js';
 
 export async function startGame({ stage, cards, audience, ui, params, audio = null, share = null }) {
   const storage = createStorage();
-  const counter = createCounter({ backend: useSharedCounter(location.hostname) ? firebaseBackend() : null, storage });
+  const backend = useSharedCounter(location.hostname) ? firebaseBackend() : null;
+  const counter = createCounter({ backend, storage });
+  const hall = createHall({ backend, storage });
+  const refreshTicker = () => hall.fetchNames().then((names) => stage.setTicker(tickerText(names))).catch(() => {});
+  refreshTicker();
   const hud = createHud(ui);
   const screens = createScreens(ui);
   const fx = createFx(stage, cards, audience);
@@ -33,6 +38,7 @@ export async function startGame({ stage, cards, audience, ui, params, audio = nu
     async hud(game) {
       await audience.setBelievers(game.believers, { animate: false });
       hud.setPopulation(game.population); hud.set(game); hud.show(true);
+      refreshTicker();
       syncMusic();
     },
     async dealRound(symbols, target, correct, { fate }) {
@@ -79,6 +85,10 @@ export async function startGame({ stage, cards, audience, ui, params, audio = nu
       await new Promise((r) => setTimeout(r, 2200));
       b.remove();
     },
+    async askNickname() {
+      const name = await screens.nickname();
+      return name;
+    },
     async showGameOver(text, before, after) {
       hud.show(false);
       await screens.gameOver(text, before, after);
@@ -92,7 +102,7 @@ export async function startGame({ stage, cards, audience, ui, params, audio = nu
     },
   };
 
-  const flow = createFlow({ counter, storage, view, rig, audio });
+  const flow = createFlow({ counter, storage, view, rig, audio, hall });
   hud.show(false);
   await screens.title();
   for (;;) await flow.start();

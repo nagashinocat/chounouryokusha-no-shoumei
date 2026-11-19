@@ -110,14 +110,35 @@ export function createStage(canvas, { preserve = false } = {}) {
   monitor.position.set(0, 2.05, -2.3); monitor.lookAt(0, 2.3, 1.5);
   scene.add(monitor);
   const monGlow = new THREE.PointLight(0xff3344, 0.7, 3.5, 2); monGlow.position.set(0, 1.7, -2.0); scene.add(monGlow);
-  let monSymbol = null, monFlash = 0;
-  function drawMonitor(t = 0) {
+  let monSymbol = null, monFlash = 0, tickerText = '', tickerX = 512;
+  // 砂嵐：小さなノイズ画像を毎フレーム作り直して引き伸ばす
+  const noise = document.createElement('canvas'); noise.width = 128; noise.height = 80;
+  const ng = noise.getContext('2d'), nimg = ng.createImageData(128, 80);
+  function drawMonitor(t = 0, dt = 0) {
     const g = monCanvas.getContext('2d');
-    g.fillStyle = '#050608'; g.fillRect(0, 0, 512, 320);
+    for (let i = 0; i < nimg.data.length; i += 4) {
+      const v = Math.random() * 255;
+      nimg.data[i] = nimg.data[i + 1] = nimg.data[i + 2] = v; nimg.data[i + 3] = 255;
+    }
+    ng.putImageData(nimg, 0, 0);
+    g.imageSmoothingEnabled = false;
+    g.globalAlpha = 1; g.drawImage(noise, 0, 0, 512, 320);
+    g.fillStyle = 'rgba(5,6,8,0.7)'; g.fillRect(0, 0, 512, 320); // 砂嵐は背景として少し沈める
     if (monSymbol) {
+      g.fillStyle = 'rgba(0,0,0,0.55)'; g.beginPath(); g.arc(256, 168, 112, 0, Math.PI * 2); g.fill();
+      g.fillStyle = 'rgba(0,0,0,0.7)'; g.fillRect(130, 18, 252, 40);
       g.fillStyle = '#ff2b3a'; g.font = 'bold 30px sans-serif'; g.textAlign = 'center';
-      g.fillText('こ れ を 当 て ろ', 256, 52);
-      drawSymbol(g, monSymbol, 256, 185, 190, '#f4f4f4', 15);
+      g.fillText('こ れ を 当 て ろ', 256, 46);
+      drawSymbol(g, monSymbol, 256, 170, 180, '#f4f4f4', 15);
+    }
+    // 下の帯：認められた超能力者の名前が右から左へ流れる
+    if (tickerText) {
+      g.fillStyle = 'rgba(0,0,0,0.78)'; g.fillRect(0, 272, 512, 48);
+      g.font = 'bold 24px sans-serif'; g.textAlign = 'left'; g.fillStyle = '#ffd76a';
+      const w = g.measureText(tickerText).width;
+      tickerX -= dt * 70;
+      if (tickerX < -w) tickerX = 512;
+      g.fillText(tickerText, tickerX, 305);
     }
     // 走査線
     g.fillStyle = 'rgba(255,255,255,0.035)';
@@ -128,6 +149,7 @@ export function createStage(canvas, { preserve = false } = {}) {
   drawMonitor();
 
   const frameFns = new Set();
+  const tweens = new Set();
   const clock = new THREE.Clock();
   let elapsed = 0;
   // 画面の縦横比に合わせて、モニターの上端(HUDの下)と手前のカードの下端(下のボタンの上)が
@@ -167,7 +189,7 @@ export function createStage(canvas, { preserve = false } = {}) {
   function loop() {
     const dt = Math.min(clock.getDelta(), 0.1); elapsed += dt;
     if (monFlash > 0) monFlash = Math.max(0, monFlash - dt * 2.5);
-    drawMonitor(elapsed);
+    drawMonitor(elapsed, dt);
     for (const fn of frameFns) fn(dt, elapsed);
     camera.lookAt(lookTarget);
     render();
@@ -181,9 +203,9 @@ export function createStage(canvas, { preserve = false } = {}) {
       if (duration <= 0) { fn(1); resolve(); return; }
       const step = (dt) => {
         t = Math.min(1, t + dt / duration); fn(easing(t));
-        if (t >= 1) { frameFns.delete(step); resolve(); }
+        if (t >= 1) { frameFns.delete(step); tweens.delete(step); resolve(); }
       };
-      frameFns.add(step);
+      frameFns.add(step); tweens.add(step);
     });
   }
   function moveCamera(pos, target, duration = 0.6, easing = ease.inOut) {
@@ -194,7 +216,12 @@ export function createStage(canvas, { preserve = false } = {}) {
   return {
     THREE, scene, camera, renderer, room, walls, ceiling, floor, table, spot, cone, ambient, monitor, monGlow, home, lookTarget,
     setMonitorSymbol(s) { monSymbol = s; monFlash = 0.8; },
+    setTicker(text) { if (text !== tickerText) { tickerText = text; tickerX = 512; } },
+    get tickerText() { return tickerText; },
+    monitorNoise: true,
     render, tween, moveCamera, wait: (s) => tween(s, () => {}, ease.linear),
+    // 動いている途中の tween をすべて終わらせる(最後の値まで進めてから止める)
+    stopTweens() { for (const fn of [...tweens]) fn(Infinity); },
     onFrame(fn) { frameFns.add(fn); return () => frameFns.delete(fn); },
     get elapsed() { return elapsed; },
   };

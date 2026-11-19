@@ -15,7 +15,7 @@ function shuffle(arr, pick) {
 
 // view は描画側の窓口。rig は 'rig'(必ず当たり)/'miss'(必ず外れ)/null。
 // rigFn はテスト用：毎回 'hit' か 'miss' を返す関数
-export function createFlow({ counter, storage, view, pick = randomIndex, rig = null, rigFn = null, audio = null }) {
+export function createFlow({ counter, storage, view, pick = randomIndex, rig = null, rigFn = null, audio = null, hall = null }) {
   const sfx = (name) => audio?.play(name);
   return {
     async start() {
@@ -45,9 +45,15 @@ export function createFlow({ counter, storage, view, pick = randomIndex, rig = n
       storage.saveBest(game.maxStreak);
       const cleared = game.status === 'cleared';
       let vanishedNumber = null;
+      let nickname = null;
       if (cleared) {
         sfx('clear');
         await view.showClear(game);
+        // 全クリした人だけ、名前を残せる
+        if (view.askNickname) {
+          nickname = await view.askNickname();
+          if (nickname && hall) { const r = await hall.submit(nickname); nickname = r.ok ? r.name : null; }
+        }
       } else {
         const r = await counter.reportVanished();
         vanishedNumber = r.vanished;
@@ -55,7 +61,7 @@ export function createFlow({ counter, storage, view, pick = randomIndex, rig = n
         await view.showGameOver(gameOverText(challenger.gender), BASE_POPULATION - (r.vanished - 1), BASE_POPULATION - r.vanished, challenger);
       }
       const result = {
-        challenger, cleared, vanishedNumber,
+        challenger, cleared, vanishedNumber, nickname,
         maxStreak: game.maxStreak, odds: oddsFor(game.maxStreak),
         believers: game.believers, rounds: game.rounds, best: storage.loadBest(),
       };
