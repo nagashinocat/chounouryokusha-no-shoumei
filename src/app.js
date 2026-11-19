@@ -1,6 +1,6 @@
 import { createStorage } from './storage.js';
 import { createCounter, firebaseBackend } from './counter.js';
-import { createHall, tickerText } from './hall.js';
+import { createHall, tickerText, creditPages } from './hall.js';
 import { createFlow } from './flow.js';
 import { createHud } from './ui/hud.js';
 import { createScreens } from './ui/screens.js';
@@ -104,6 +104,12 @@ export async function startGame({ stage, cards, audience, ui, params, audio = nu
 
   const flow = createFlow({ counter, storage, view, rig, audio, hall });
   hud.show(false);
-  await screens.title();
+  await screens.title(undefined, {
+    onHall: async () => {
+      stage.setCredits(creditPages(await hall.fetchNames()));
+      await stage.focusMonitor();
+    },
+    onHallBack: () => stage.unfocusMonitor(),
+  });
   for (;;) await flow.start();
 }

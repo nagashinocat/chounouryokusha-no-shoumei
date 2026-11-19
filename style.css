@@ -66,3 +66,10 @@ html,body{margin:0;height:100%;background:#000;color:#eee;overflow:hidden;touch-
 .nick input:focus{border-color:#ff3b47}
 .nick .nick-err{color:#ff4b55;font-size:13px;margin:.6em 0 0}
 .nick .btns{display:flex;gap:.8em;margin-top:1.6em}.nick .btns .btn{margin-top:0;min-width:7em}
+
+.title-screen .hall-btn{position:absolute;bottom:max(80px,calc(env(safe-area-inset-bottom) + 60px));left:50%;transform:translateX(-50%);margin:0;font-size:14px;letter-spacing:.2em;padding:.7em 1.4em;border-color:#7a1f26;color:#ff6a72;background:rgba(0,0,0,.6);white-space:nowrap}
+.title-screen .hall-back{display:none}
+.title-screen.hall{background:transparent;transition:background .4s}
+.title-screen.hall canvas,.title-screen.hall .title-text,.title-screen.hall .title-hint,.title-screen.hall .hall-btn{opacity:0;pointer-events:none;transition:opacity .4s;animation:none}
+.title-screen.hall .hall-back{display:block;position:absolute;top:max(20px,env(safe-area-inset-top));left:16px;margin:0;font-size:14px;padding:.5em 1.2em;background:rgba(0,0,0,.5)}
+.title-screen.hall.leaving .hall-back{display:none}

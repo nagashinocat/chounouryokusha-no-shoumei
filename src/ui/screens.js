@@ -49,8 +49,24 @@ export function createScreens(ui) {
   return {
     clear,
     // スタート画面：黒地の真ん中に縦書きで題字、後ろで信者の目がぼんやり光る。どこかをタップで進む
-    title(text = '超能力者の証明') {
-      const s = mount(`<canvas></canvas><div class="title-text">${esc(text)}</div><p class="title-hint">画面をタップ</p>`, 'title-screen interactive');
+    title(text = '超能力者の証明', { onHall = null, onHallBack = null } = {}) {
+      const s = mount(`<canvas></canvas><div class="title-text">${esc(text)}</div>
+        ${onHall ? '<button class="btn hall-btn">認められた超能力者</button><button class="btn hall-back">戻る</button>' : ''}
+        <p class="title-hint">画面をタップ</p>`, 'title-screen interactive');
+      let inHall = false;
+      if (onHall) {
+        s.querySelector('.hall-btn').addEventListener('click', async (e) => {
+          e.stopPropagation(); if (inHall) return; inHall = true;
+          s.classList.add('hall');           // タイトルを消して、奥の3Dの部屋を見せる
+          await onHall();
+        });
+        s.querySelector('.hall-back').addEventListener('click', async (e) => {
+          e.stopPropagation();
+          s.classList.add('leaving');
+          await onHallBack?.();
+          s.classList.remove('hall', 'leaving'); inHall = false;
+        });
+      }
       s.dataset.title = '';
       const cv = s.querySelector('canvas'), g = cv.getContext('2d');
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -86,6 +102,7 @@ export function createScreens(ui) {
       requestAnimationFrame(draw);
       return new Promise((resolve) => {
         s.addEventListener('click', async () => {
+          if (inHall) return;
           s.classList.remove('in'); await sleep(500);
           alive = false; removeEventListener('resize', layout); clear(); resolve();
         }, { once: true });

@@ -36,3 +36,11 @@ export function createHall({ backend, storage }) {
     },
   };
 }
+
+// テレビの提供クレジットのように、1画面8人ずつに分ける
+export function creditPages(names, per = 8) {
+  if (!names.length) return [['まだ誰もいない']];
+  const pages = [];
+  for (let i = 0; i < names.length; i += per) pages.push(names.slice(i, i + per));
+  return pages;
+}

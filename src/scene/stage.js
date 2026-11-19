@@ -101,7 +101,8 @@ export function createStage(canvas, { preserve = false } = {}) {
   cone.position.set(0, 3.2, -0.1); scene.add(cone);
 
   // 正面の壁のモニター
-  const monCanvas = document.createElement('canvas'); monCanvas.width = 512; monCanvas.height = 320;
+  // 寄ったときにも文字がにじまないよう、2倍の解像度で描く(描く座標は 512×320 のまま)
+  const monCanvas = document.createElement('canvas'); monCanvas.width = 1024; monCanvas.height = 640;
   const monTex = new THREE.CanvasTexture(monCanvas); monTex.colorSpace = THREE.SRGBColorSpace;
   const monitor = new THREE.Group();
   const bezel = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.92, 0.08), new THREE.MeshStandardMaterial({ color: 0x080808, roughness: 0.4, metalness: 0.5 }));
@@ -114,8 +115,10 @@ export function createStage(canvas, { preserve = false } = {}) {
   // 砂嵐：小さなノイズ画像を毎フレーム作り直して引き伸ばす
   const noise = document.createElement('canvas'); noise.width = 128; noise.height = 80;
   const ng = noise.getContext('2d'), nimg = ng.createImageData(128, 80);
+  let monitorMode = 'game', credits = [['まだ誰もいない']], creditT = 0;
   function drawMonitor(t = 0, dt = 0) {
     const g = monCanvas.getContext('2d');
+    g.setTransform(2, 0, 0, 2, 0, 0);
     for (let i = 0; i < nimg.data.length; i += 4) {
       const v = Math.random() * 255;
       nimg.data[i] = nimg.data[i + 1] = nimg.data[i + 2] = v; nimg.data[i + 3] = 255;
@@ -123,7 +126,8 @@ export function createStage(canvas, { preserve = false } = {}) {
     ng.putImageData(nimg, 0, 0);
     g.imageSmoothingEnabled = false;
     g.globalAlpha = 1; g.drawImage(noise, 0, 0, 512, 320);
-    g.fillStyle = 'rgba(5,6,8,0.7)'; g.fillRect(0, 0, 512, 320); // 砂嵐は背景として少し沈める
+    g.fillStyle = monitorMode === 'credits' ? 'rgba(4,4,6,0.86)' : 'rgba(5,6,8,0.7)'; g.fillRect(0, 0, 512, 320); // 砂嵐は背景として少し沈める
+    if (monitorMode === 'credits') { drawCredits(g, dt); monTex.needsUpdate = true; return; }
     if (monSymbol) {
       g.fillStyle = 'rgba(0,0,0,0.55)'; g.beginPath(); g.arc(256, 168, 112, 0, Math.PI * 2); g.fill();
       g.fillStyle = 'rgba(0,0,0,0.7)'; g.fillRect(130, 18, 252, 40);
@@ -145,6 +149,28 @@ export function createStage(canvas, { preserve = false } = {}) {
     for (let y = (t * 40) % 4; y < 320; y += 4) g.fillRect(0, y, 512, 1);
     if (monFlash > 0) { g.fillStyle = `rgba(255,255,255,${monFlash})`; g.fillRect(0, 0, 512, 320); }
     monTex.needsUpdate = true;
+  }
+  // テレビの提供クレジット風：「認められた超能力者」と名前の一覧。8人を超えたら数秒ごとにめくる
+  function drawCredits(g, dt) {
+    creditT += dt;
+    const page = Math.floor(creditT / 3.5) % credits.length, names = credits[page];
+    const fade = credits.length > 1 ? Math.min(1, (creditT % 3.5) / 0.35, (3.5 - (creditT % 3.5)) / 0.35) : 1;
+    const serif = '"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP","Noto Serif CJK JP",serif';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillStyle = '#ff2b3a'; g.font = `bold 22px ${serif}`;
+    g.fillText('認められた超能力者', 256, 48);
+    g.fillStyle = 'rgba(255,43,58,0.6)'; g.fillRect(90, 47, 50, 2); g.fillRect(372, 47, 50, 2);
+    g.globalAlpha = fade; g.fillStyle = '#ffffff'; g.font = `bold 25px ${serif}`;
+    const cols = names.length > 4 ? 2 : 1, rows = Math.ceil(names.length / cols);
+    names.forEach((n, i) => {
+      const c = cols === 2 ? i % 2 : 0, r = cols === 2 ? Math.floor(i / 2) : i;
+      const x = cols === 2 ? (c ? 362 : 150) : 256, y = 168 + (r - (rows - 1) / 2) * 44;
+      g.fillText(n, x, y, cols === 2 ? 200 : 400);
+    });
+    g.globalAlpha = 1;
+    g.fillStyle = '#8a8a8a'; g.font = `14px ${serif}`;
+    g.fillText('この番組は、ご覧の超能力者の提供でお送りします', 256, 292);
+    g.textBaseline = 'alphabetic';
   }
   drawMonitor();
 
@@ -216,6 +242,25 @@ export function createStage(canvas, { preserve = false } = {}) {
   return {
     THREE, scene, camera, renderer, room, walls, ceiling, floor, table, spot, cone, ambient, monitor, monGlow, home, lookTarget,
     setMonitorSymbol(s) { monSymbol = s; monFlash = 0.8; },
+    get monitorMode() { return monitorMode; },
+    setCredits(pages) { credits = pages; creditT = 0; },
+    // カメラをモニターの正面へぐいっと寄せる(画面いっぱいに収まる距離)
+    async focusMonitor(duration = 1.1) {
+      monitorMode = 'credits'; creditT = 0;
+      const center = new THREE.Vector3(); monitor.getWorldPosition(center);
+      const normal = new THREE.Vector3(0, 0, 1).applyQuaternion(monitor.quaternion).normalize();
+      const vfov = THREE.MathUtils.degToRad(camera.fov), hfov = 2 * Math.atan(Math.tan(vfov / 2) * camera.aspect);
+      const dist = Math.max(0.78 / Math.tan(hfov / 2), 0.52 / Math.tan(vfov / 2));
+      // 少し行き過ぎてから戻る「ぐいっ」
+      const over = center.clone().add(normal.clone().multiplyScalar(dist * 0.9));
+      await moveCamera(over, center, duration * 0.75, ease.inOut);
+      await moveCamera(center.clone().add(normal.multiplyScalar(dist)), center, duration * 0.25, ease.out);
+    },
+    async unfocusMonitor(duration = 0.8) {
+      await moveCamera(home.pos, home.target, duration, ease.inOut);
+      monitorMode = 'game';
+    },
+    cameraToMonitor() { const c = new THREE.Vector3(); monitor.getWorldPosition(c); return camera.position.distanceTo(c); },
     setTicker(text) { if (text !== tickerText) { tickerText = text; tickerX = 512; } },
     get tickerText() { return tickerText; },
     monitorNoise: true,

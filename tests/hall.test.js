@@ -39,3 +39,12 @@ it('hall uses the backend when available, newest first', async () => {
   expect(await hall.submit('c')).toEqual({ ok: true, name: 'c', live: true });
   expect(sent).toEqual(['c']);
 });
+
+it('credit pages: up to 8 names per page like a TV sponsor card, or a single "nobody" page', async () => {
+  const { creditPages } = await import('../src/hall.js');
+  expect(creditPages([])).toEqual([['まだ誰もいない']]);
+  const names = Array.from({ length: 19 }, (_, i) => `n${i}`);
+  const pages = creditPages(names);
+  expect(pages.map((p) => p.length)).toEqual([8, 8, 3]);
+  expect(pages.flat()).toEqual(names);
+});
