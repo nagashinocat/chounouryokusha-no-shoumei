@@ -43,10 +43,12 @@ async function boot() {
     window.__debug.ready = true;
     return;
   }
-  const [{ startGame }, { shareFromResult }, { createAudio, mountMuteButton }, { createStorage }] = await Promise.all([
+  const [{ startGame }, { prepareShare }, { createAudio, mountMuteButton }, { createStorage }] = await Promise.all([
     import('./app.js'), import('./share.js'), import('./audio.js'), import('./storage.js')]);
   const audio = createAudio(createStorage());
   mountMuteButton(ui, audio);
-  startGame({ stage, cards, audience, ui, params, audio, share: shareFromResult });
+  // iOS はタップの処理の中でしか音を出せないので、どのタップでも同期的に解除・再開する
+  document.addEventListener('pointerdown', () => audio.unlock(), { capture: true });
+  startGame({ stage, cards, audience, ui, params, audio, share: (r) => prepareShare(r) });
 }
 boot();

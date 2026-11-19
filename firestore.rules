@@ -10,7 +10,7 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['count'])
         && request.resource.data.count == resource.data.count + 1
         && getAfter(playerPath()).data.lastAt == request.time
-        && (!exists(playerPath()) || get(playerPath()).data.lastAt < request.time - duration.value(30, 's'));
+        && (!exists(playerPath()) || get(playerPath()).data.lastAt < request.time - duration.value(10, 's'));
     }
 
     match /players/{uid} {

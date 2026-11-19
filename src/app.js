@@ -4,6 +4,7 @@ import { createFlow } from './flow.js';
 import { createHud } from './ui/hud.js';
 import { createScreens } from './ui/screens.js';
 import { createFx } from './scene/fx.js';
+import { debugMode } from './debug.js';
 
 export async function startGame({ stage, cards, audience, ui, params, audio = null, share = null }) {
   const storage = createStorage();
@@ -13,8 +14,7 @@ export async function startGame({ stage, cards, audience, ui, params, audio = nu
   const fx = createFx(stage, cards, audience);
   const dbg = (window.__debug ??= {});
   dbg.awaitingPick = false;
-  const d = params.get('debug');
-  const rig = d === 'rig' || d === 'miss' ? d : null;
+  const rig = debugMode(params, location.hostname);
 
   let fateBanner = null;
   const view = {
@@ -79,7 +79,9 @@ export async function startGame({ stage, cards, audience, ui, params, audio = nu
       await screens.gameOver(text, before, after);
     },
     async showResult(result) {
-      await screens.result(result, { onShare: (fallbackEl) => share?.(result, fallbackEl) });
+      // 画像は先に作っておき、タップの中で同期的に共有シートを開く(iOS 対策)
+      const handler = share?.(result);
+      await screens.result(result, { onShare: (fallbackEl) => handler?.share(fallbackEl) });
       await fx.resetAfterClear();
       cards.lock();
     },

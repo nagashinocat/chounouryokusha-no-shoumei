@@ -37,3 +37,14 @@ it('a cancelled share is not a failure', async () => {
   const env = { navigator: { canShare: () => true, share: async () => { throw err; } }, File: class { constructor(p, n, o) { this.name = n; } }, open: vi.fn() };
   expect(await shareResult(blob, result, URL_, env)).toBe('cancelled');
 });
+
+it('prepared share calls navigator.share synchronously inside the tap (iOS)', async () => {
+  const { prepareShare } = await import('../src/share.js');
+  let calledSync = false;
+  const env = { navigator: { canShare: () => true, share: () => { calledSync = true; return Promise.resolve(); } }, File: class { constructor(p, n, o) { this.name = n; } }, open() {} };
+  const h = prepareShare(result, async () => blob, env);
+  await h.ready;
+  const p = h.share(null);
+  expect(calledSync).toBe(true); // await より前に呼ばれている
+  expect(await p).toBe('shared');
+});

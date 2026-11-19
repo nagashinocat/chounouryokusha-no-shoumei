@@ -25,13 +25,13 @@ it('authed +1 with player stamp succeeds', async () => {
 it('+2 fails', async () => { await assertFails(vanish(env.authenticatedContext('u1').firestore(), 'u1', 2)); });
 it('unauthenticated fails', async () => { await assertFails(vanish(env.unauthenticatedContext().firestore(), 'anon')); });
 it('count without player stamp fails', async () => { await assertFails(vanish(env.authenticatedContext('u1').firestore(), 'u1', 1, false)); });
-it('second within 30s fails', async () => {
+it('second within 10s fails', async () => {
   const db = env.authenticatedContext('u1').firestore();
   await assertSucceeds(vanish(db, 'u1'));
   await assertFails(vanish(db, 'u1'));
 });
-it('after 30s succeeds again', async () => {
-  await env.withSecurityRulesDisabled(c => setDoc(doc(c.firestore(), 'players/u1'), { lastAt: Timestamp.fromMillis(Date.now() - 31000) }));
+it('after 10s succeeds again', async () => {
+  await env.withSecurityRulesDisabled(c => setDoc(doc(c.firestore(), 'players/u1'), { lastAt: Timestamp.fromMillis(Date.now() - 11000) }));
   await assertSucceeds(vanish(env.authenticatedContext('u1').firestore(), 'u1'));
 });
 it("writing someone else's player doc fails", async () => {

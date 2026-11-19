@@ -52,6 +52,8 @@ export function createFx(stage, cards, audience) {
     },
     async resetAfterClear() {
       ambient.intensity = base.amb;
+      spot.angle = base.spotAngle; spot.intensity = base.spotI;
+      cone.material.opacity = 0.035; monGlow.intensity = base.glow;
       await stage.moveCamera(home.pos, home.target, 0.01);
     },
   };

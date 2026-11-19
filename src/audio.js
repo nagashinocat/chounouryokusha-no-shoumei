@@ -83,7 +83,7 @@ export function createAudio(storage) {
   }
 
   return {
-    unlock() { if (ensure() && ctx.state === 'suspended') ctx.resume(); },
+    unlock() { if (ensure() && ctx.state !== 'running') ctx.resume(); },
     bgm(on) { if (on) startBgm(); },
     play(name) { if (!ensure() || muted) return; try { sounds[name]?.(); } catch {} },
     get muted() { return muted; },

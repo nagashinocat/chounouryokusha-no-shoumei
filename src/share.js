@@ -75,15 +75,28 @@ export function drawResultImage(r, canvas = document.createElement('canvas')) {
   return new Promise((res) => canvas.toBlob((b) => res(b), 'image/png'));
 }
 
-// リザルト画面の「共有する」から呼ぶ
-export async function shareFromResult(result, fallbackEl) {
-  const blob = await drawResultImage(result);
-  const outcome = await shareResult(blob, result, GAME_URL, window);
-  if (outcome !== 'fallback' || !fallbackEl) return outcome;
-  const url = URL.createObjectURL(blob);
+// リザルト画面を出した時点で画像を作っておき、タップでは await せずに share を呼ぶ。
+export function prepareShare(result, makeBlob = drawResultImage, env = globalThis) {
+  let blob = null, url = null, busy = false;
+  const ready = Promise.resolve(makeBlob(result)).then((b) => { blob = b; });
+  return {
+    ready,
+    share(fallbackEl) {
+      if (busy) return Promise.resolve('busy');
+      if (!blob) return ready.then(() => this.share(fallbackEl));
+      busy = true;
+      return shareResult(blob, result, GAME_URL, env).then((outcome) => {
+        busy = false;
+        if (outcome === 'fallback' && fallbackEl) { url ??= URL.createObjectURL(blob); showFallback(fallbackEl, url, result); }
+        return outcome;
+      });
+    },
+  };
+}
+
+function showFallback(fallbackEl, url, result) {
   fallbackEl.innerHTML = `<img src="${url}" alt="結果画像" style="width:70%;border:1px solid #333;margin:.6em 0"><br>
     <a href="${url}" download="chounouryokusha-maker.png">画像を保存する</a>
     <a href="${xIntentUrl(shareText(result), GAME_URL)}" target="_blank" rel="noopener">Xに投稿する</a>`;
   fallbackEl.hidden = false;
-  return outcome;
 }
