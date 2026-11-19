@@ -130,15 +130,38 @@ export function createStage(canvas, { preserve = false } = {}) {
   const frameFns = new Set();
   const clock = new THREE.Clock();
   let elapsed = 0;
+  // 画面の縦横比に合わせて、モニターの上端(HUDの下)と手前のカードの下端(下のボタンの上)が
+  // 両方収まる向きと画角を探す
+  const monitorTop = new THREE.Vector3(0, 2.52, -2.3);
+  const nearCards = [new THREE.Vector3(-0.42, 0.78, 0.5), new THREE.Vector3(0.42, 0.78, 0.5)];
+  function fitCamera(w, h) {
+    const topNdc = 1 - 2 * (118 / h), bottomNdc = -1 + 2 * (84 / h);
+    const v = new THREE.Vector3();
+    let best = null;
+    for (let fov = 46; fov <= 84 && !best; fov += 1) {
+      for (let ty = 1.5; ty >= 0.6 && !best; ty -= 0.05) {
+        camera.fov = fov; camera.aspect = w / h; camera.updateProjectionMatrix();
+        camera.position.copy(home.pos); camera.lookAt(0, ty, -1.4); camera.updateMatrixWorld();
+        const top = v.copy(monitorTop).project(camera).y;
+        const bottom = Math.min(...nearCards.map((p) => v.copy(p).project(camera).y));
+        if (top <= topNdc && bottom >= bottomNdc) best = { fov, ty };
+      }
+    }
+    best ??= { fov: 84, ty: 1.0 };
+    camera.fov = best.fov; camera.updateProjectionMatrix();
+    home.target.set(0, best.ty, -1.4);
+  }
   function resize() {
-    const w = window.innerWidth, h = window.innerHeight;
+    const vv = window.visualViewport;
+    const w = Math.round(vv?.width ?? window.innerWidth), h = Math.round(vv?.height ?? window.innerHeight);
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
-    // 縦長でもテーブル全体が入るように画角を広げる
-    camera.fov = w / h < 0.62 ? 66 : 50;
-    camera.updateProjectionMatrix();
+    fitCamera(w, h);
+    camera.position.copy(home.pos); lookTarget.copy(home.target);
   }
-  window.addEventListener('resize', resize); resize();
+  window.addEventListener('resize', resize);
+  window.visualViewport?.addEventListener('resize', resize);
+  resize();
 
   function render() { renderer.render(scene, camera); }
   function loop() {

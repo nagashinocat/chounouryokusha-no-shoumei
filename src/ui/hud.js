@@ -9,8 +9,9 @@ export function rollNumber(el, from, to, duration = 600, suffix = '') {
       const k = Math.min(1, (now - t0) / duration);
       // 桁がトゥルルと回るように、対数で補間しつつ下の桁を揺らす
       const a = Math.log(Math.max(from, 1)), b = Math.log(Math.max(to, 1));
-      let v = Math.exp(a + (b - a) * (1 - Math.pow(1 - k, 3)));
-      if (k < 1) v += Math.random() * Math.max(1, v * 0.02);
+      const e = 1 - Math.pow(1 - k, 3);
+      // 桁が大きく違うときは対数で、近いときはそのまま補間する(どちらも一方向に動くだけ)
+      const v = Math.abs(b - a) > 1 ? Math.exp(a + (b - a) * e) : from + (to - from) * e;
       el.textContent = fmt(k >= 1 ? to : v) + suffix;
       if (k < 1) requestAnimationFrame(step); else resolve();
     };

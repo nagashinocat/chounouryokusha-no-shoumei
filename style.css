@@ -1,6 +1,6 @@
 html,body{margin:0;height:100%;background:#000;color:#eee;overflow:hidden;touch-action:manipulation;-webkit-user-select:none;user-select:none;
  font-family:"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif}
-#gl{position:fixed;inset:0;width:100vw;height:100vh;display:block}
+#gl{position:fixed;inset:0;width:100vw;height:100vh;height:100dvh;display:block}
 #ui{position:fixed;inset:0;pointer-events:none}
 #ui .interactive,#ui button{pointer-events:auto}
 .notice{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:2em;line-height:1.8;background:#000}

@@ -116,6 +116,16 @@ export function createCards(stage) {
     hideAll() { cards.forEach((c) => { c.rotation.set(0, 0, 0); c.position.copy(c.userData.home); }); },
     lock() { locked = true; },
     unlock() { lock.release(); locked = false; },
+    // カードの四隅を画面に写した範囲(画面のレイアウト確認用)
+    screenRect(i) {
+      const c = cards[i], r = renderer.domElement.getBoundingClientRect();
+      const ys = [], xs = [];
+      for (const [dx, dz] of [[-W / 2, -L / 2], [W / 2, -L / 2], [-W / 2, L / 2], [W / 2, L / 2]]) {
+        const v = c.position.clone().add(new THREE.Vector3(dx, 0, dz)).project(camera);
+        xs.push(r.left + ((v.x + 1) / 2) * r.width); ys.push(r.top + ((1 - v.y) / 2) * r.height);
+      }
+      return { left: Math.min(...xs), right: Math.max(...xs), top: Math.min(...ys), bottom: Math.max(...ys) };
+    },
     screenPos(i) {
       const v = cards[i].position.clone().project(camera);
       const r = renderer.domElement.getBoundingClientRect();
