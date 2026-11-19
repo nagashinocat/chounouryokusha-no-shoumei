@@ -36,10 +36,31 @@ it('the score loops 8 bars of the voice-memo melody in music-box register', asyn
     expect(midi).toBeGreaterThanOrEqual(72); expect(midi).toBeLessThanOrEqual(91);
     expect(len).toBeGreaterThan(0);
   }
-  // 書き起こしの頭と終わり(ボイスメモの音を2オクターブ上げたもの)
-  expect(MELODY[0]).toEqual([1, 62 + 24, 1]);
-  expect(MELODY.at(-1)).toEqual([62, 53 + 24, 2]);
+  // 2つ目のボイスメモ：頭はF#、終わりは主音Eで落ち着く(2オクターブ上げたもの)
+  expect(MELODY[0]).toEqual([0, 54 + 24, 2]);
+  expect(MELODY.at(-1)).toEqual([62, 52 + 24, 2]);
   expect(MELODY.length).toBe(49);
+});
+
+it('melody stays in E minor (plus the leading tone D#) so it is eerie but not queasy', async () => {
+  const { MELODY } = await import('../src/audio.js');
+  const allowed = new Set([4, 6, 7, 9, 11, 0, 2, 3]); // E F# G A B C D D#
+  for (const [, m] of MELODY) expect(allowed.has(m % 12)).toBe(true);
+});
+
+it('backing follows E-minor chords: bass, pad and choir only use chord tones', async () => {
+  const { eventsAt, CHORDS } = await import('../src/audio.js');
+  expect(CHORDS.length).toBe(8);
+  const diatonic = { E: 4, A: 9, B: 11, C: 0, D: 2, G: 7 };
+  for (const c of CHORDS) expect(Object.values(diatonic)).toContain(c.root % 12);
+  for (let st = 0; st < 64; st++) {
+    const chord = CHORDS[Math.floor(st / 8)];
+    for (const e of eventsAt(st, 4)) {
+      if (['bass', 'pad', 'choir'].includes(e.inst)) {
+        for (const m of e.notes) expect(chord.tones).toContain(((m % 12) + 12) % 12);
+      }
+    }
+  }
 });
 
 it('layers add instruments; the first added is a kick going "dan, da-dan"', async () => {

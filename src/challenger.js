@@ -18,5 +18,5 @@ export function makeChallenger(number, pick = randomIndex) {
 }
 
 export function gameOverText() {
-  return 'その後、人口が1人減ったが誰も気づかなかった。';
+  return 'その後、人口が一人減ったが誰も気づくことはなかった。';
 }

@@ -11,7 +11,7 @@ test('always miss: game over text then result', async ({ page }) => {
   await page.goto('/index.html?debug=miss');
   await page.getByRole('button', { name: '始める' }).click();
   for (let i = 0; i < 4; i++) await tapCard(page, i % 4);
-  await expect(page.getByText('その後、人口が1人減ったが誰も気づかなかった。')).toBeVisible({ timeout: 15000 });
+  await expect(page.getByText('その後、人口が一人減ったが誰も気づくことはなかった。')).toBeVisible({ timeout: 15000 });
   await expect(page.locator('[data-result]')).toBeVisible({ timeout: 20000 });
   await page.screenshot({ path: 'test-results/result-miss.png' });
   await expect(page.locator('[data-result]')).toContainText('最大連続');

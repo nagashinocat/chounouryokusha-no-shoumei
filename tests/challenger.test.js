@@ -21,6 +21,6 @@ it('lists are big enough', () => {
   expect(JOBS.length).toBeGreaterThanOrEqual(20);
 });
 it('game over text', () => {
-  expect(gameOverText('m')).toBe('その後、人口が1人減ったが誰も気づかなかった。');
-  expect(gameOverText('f')).toBe('その後、人口が1人減ったが誰も気づかなかった。');
+  expect(gameOverText('m')).toBe('その後、人口が一人減ったが誰も気づくことはなかった。');
+  expect(gameOverText('f')).toBe('その後、人口が一人減ったが誰も気づくことはなかった。');
 });

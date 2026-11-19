@@ -1,39 +1,57 @@
 // すべて WebAudio で合成する(外部の音声ファイルなし)。
 
-// ボイスメモの鼻歌を書き起こした旋律(123BPM、8分音符単位)。[開始ステップ, MIDI, 長さ]
-// 歌った音を2オクターブ上げてオルゴールの音域にしている。8小節でループ。
+// ボイスメモの鼻歌を書き起こした旋律(120BPM、8分音符単位)。[開始ステップ, MIDI]
+// ホ短調(自然短音階＋導音D#)にそろえ、半音高くずれた2回目のフレーズは1回目の調に戻してある。
+// 歌った音を2オクターブ上げてオルゴールの音域にし、8小節でループする。
 const SUNG = [
-  [1, 62], [2, 63], [4, 57], [5, 62], [6, 61], [8, 56], [9, 61], [10, 60],
-  [12, 56], [13, 58], [14, 59], [15, 58], [16, 57], [17, 55], [18, 53], [20, 53], [21, 55], [22, 56],
-  [24, 55], [25, 53], [26, 51], [28, 50], [29, 52],
-  [32, 57], [33, 64], [34, 63], [36, 59], [37, 64], [38, 63], [40, 58], [41, 63], [42, 62],
-  [44, 57], [45, 59], [46, 60], [47, 58], [48, 57], [49, 56], [50, 53], [52, 53], [53, 55], [54, 56],
-  [56, 56], [57, 54], [58, 52], [59, 52], [60, 51], [61, 52], [62, 53],
+  [0, 54], [2, 63], [4, 59], [5, 62], [6, 63], [7, 62], [8, 57], [9, 62], [10, 60],
+  [12, 55], [13, 59], [14, 59], [16, 57], [17, 55], [18, 52], [21, 54], [22, 55],
+  [24, 54], [25, 52], [26, 51], [28, 50], [29, 51], [30, 52],
+  [32, 57], [33, 63], [34, 63], [36, 60], [37, 63], [38, 62], [40, 57], [41, 62], [42, 60],
+  [44, 57], [45, 59], [46, 59], [47, 57], [48, 57], [49, 55], [50, 51], [51, 52],
+  [52, 52], [53, 55], [54, 55], [56, 55], [57, 52], [58, 51], [59, 51], [61, 51], [62, 52],
 ];
 export const LOOP_STEPS = 64;
-export const STEP_SEC = 60 / 123 / 2;
+export const STEP_SEC = 60 / 120 / 2;
 export const MELODY = SUNG.map(([st, m], i) => {
   const next = i + 1 < SUNG.length ? SUNG[i + 1][0] : LOOP_STEPS;
-  return [st, m + 24, Math.min(next - st, 2) || 2];
+  return [st, m + 24, Math.min(next - st, 2)];
 });
 const melodyAt = new Map(MELODY.map((e) => [e[0], e]));
 const midiFreq = (m) => 440 * Math.pow(2, (m - 69) / 12);
+
+// 小節ごとの和音：ホ短調の和音から、その小節の旋律にいちばん合うものを選ぶ
+const CANDIDATES = [
+  { name: 'Em', root: 4, tones: [4, 7, 11] }, { name: 'Am', root: 9, tones: [9, 0, 4] },
+  { name: 'B', root: 11, tones: [11, 3, 6] }, { name: 'C', root: 0, tones: [0, 4, 7] },
+  { name: 'D', root: 2, tones: [2, 6, 9] }, { name: 'G', root: 7, tones: [7, 11, 2] },
+];
+export const CHORDS = Array.from({ length: 8 }, (_, bar) => {
+  if (bar === 7) return CANDIDATES[0]; // 最後は主和音で落ち着かせる
+  const notes = MELODY.filter(([st]) => st >= bar * 8 && st < bar * 8 + 8);
+  let best = CANDIDATES[0], bestScore = -1;
+  for (const c of CANDIDATES) {
+    const sc = notes.reduce((t, [st, m, len]) => t + (c.tones.includes(m % 12) ? len + (st % 8 === 0 ? 1 : 0) : 0), 0);
+    if (sc > bestScore) { best = c; bestScore = sc; }
+  }
+  return best;
+});
+const inRange = (pc, lo) => lo + ((pc - lo) % 12 + 12) % 12; // lo 以上で最初に出てくるその音
 
 // 信者が増えると楽器が増える。1つ目は必ずバスドラ「ダン、ダダん」
 export function layersForTier(tier) { return ['room', 'theater', 'stadium', 'city', 'earth'].indexOf(tier); }
 export function eventsAt(step, layers) {
   const s = ((step % LOOP_STEPS) + LOOP_STEPS) % LOOP_STEPS, ev = [];
+  const chord = CHORDS[Math.floor(s / 8)];
   const mel = melodyAt.get(s);
   if (mel) ev.push({ inst: 'box', midi: mel[1], len: mel[2] });
   if (layers >= 1 && [0, 4, 5].includes(s % 8)) ev.push({ inst: 'kick' });
-  const barLow = () => Math.min(...MELODY.filter(([st]) => st >= s && st < s + 8).map(([, m]) => m), 99);
-  if (layers >= 2 && s % 4 === 0) {
-    // 直前までで最後に鳴った旋律の音の2オクターブ下(歌った高さの1オクターブ下)
-    const last = [...MELODY].reverse().find(([st]) => st <= s) ?? MELODY.at(-1);
-    ev.push({ inst: 'bass', midi: last[1] - 36, len: 4 });
+  if (layers >= 2 && s % 4 === 0) { const r = inRange(chord.root, 40); ev.push({ inst: 'bass', midi: r, notes: [r], len: 4 }); }
+  if (layers >= 3 && s % 8 === 0) ev.push({ inst: 'pad', notes: chord.tones.map((pc) => inRange(pc, 52)), len: 8 });
+  if (layers >= 4 && s % 8 === 0) {
+    const r = inRange(chord.root, 57);
+    ev.push({ inst: 'choir', notes: [r, inRange(chord.tones[2], r)], len: 8 });
   }
-  if (layers >= 3 && s % 8 === 0) { const r = barLow(); if (r < 99) ev.push({ inst: 'pad', midi: r - 36, len: 8 }); }
-  if (layers >= 4 && s % 16 === 0) { const r = barLow(); if (r < 99) ev.push({ inst: 'choir', midi: r - 24, len: 16 }); }
   return ev;
 }
 
@@ -116,7 +134,7 @@ export function createAudio(storage, nav = globalThis.navigator, { context = nul
   }
   // オルゴールの歯：基音＋金属っぽい倍音、鋭い立ち上がりと長い減衰
   function plink(freq, t, vel, dest) {
-    const cents = (Math.random() - 0.5) * 22; // ねじが緩んだような音程の揺れ
+    const cents = (Math.random() - 0.5) * 8; // ごくわずかな音程の揺れ(気持ち悪くならない程度)
     const f = freq * Math.pow(2, cents / 1200);
     for (const [mul, amp, dec] of [[1, 0.5, 1.9], [3.01, 0.12, 0.7], [5.93, 0.05, 0.25]]) {
       const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = f * mul;
@@ -156,7 +174,7 @@ export function createAudio(storage, nav = globalThis.navigator, { context = nul
     const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t);
     g.gain.exponentialRampToValueAtTime(0.13, t + dur * 0.35); g.gain.exponentialRampToValueAtTime(0.0001, t + dur * 1.05);
     lp.connect(g).connect(dest);
-    for (const [mul, det] of [[1, -7], [1, 6], [1.5, 3], [2, -4]]) {
+    for (const [mul, det] of [[1, -4], [1, 4]]) {
       const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = freq * mul; o.detune.value = det;
       o.connect(lp); o.start(t); o.stop(t + dur * 1.1);
     }
@@ -167,7 +185,7 @@ export function createAudio(storage, nav = globalThis.navigator, { context = nul
     g.gain.exponentialRampToValueAtTime(1.1, t + dur * 0.4); g.gain.exponentialRampToValueAtTime(0.0001, t + dur * 1.05);
     g.connect(dest);
     const src = [];
-    for (const [mul, det] of [[1, -9], [1, 8], [1.5, 0]]) {
+    for (const [mul, det] of [[1, -5], [1, 5]]) {
       const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = freq * mul; o.detune.value = det; src.push(o);
     }
     for (const [fr, q, amp] of [[800, 8, 1], [1150, 9, 0.6], [2900, 12, 0.25]]) {
@@ -218,8 +236,8 @@ export function createAudio(storage, nav = globalThis.navigator, { context = nul
         if (e.inst === 'box') plink(midiFreq(e.midi), t, 0.85 + Math.random() * 0.3, box.bus.box);
         else if (e.inst === 'kick') kick(t, box.bus.kick);
         else if (e.inst === 'bass') bass(midiFreq(e.midi), t, dur * 0.9, box.bus.bass);
-        else if (e.inst === 'pad') pad(midiFreq(e.midi), t, dur, box.bus.pad);
-        else if (e.inst === 'choir') choir(midiFreq(e.midi), t, dur, box.bus.choir);
+        else if (e.inst === 'pad') for (const m of e.notes) pad(midiFreq(m), t, dur, box.bus.pad);
+        else if (e.inst === 'choir') for (const m of e.notes) choir(midiFreq(m), t, dur, box.bus.choir);
       }
       box.next += STEP_SEC;
       box.step = (box.step + 1) % LOOP_STEPS;
