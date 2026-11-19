@@ -5,6 +5,7 @@ import { createHud } from './ui/hud.js';
 import { createScreens } from './ui/screens.js';
 import { createFx } from './scene/fx.js';
 import { debugMode } from './debug.js';
+import { layersForTier } from './audio.js';
 
 export async function startGame({ stage, cards, audience, ui, params, audio = null, share = null }) {
   const storage = createStorage();
@@ -17,6 +18,7 @@ export async function startGame({ stage, cards, audience, ui, params, audio = nu
   const rig = debugMode(params, location.hostname);
 
   let fateBanner = null;
+  const syncMusic = () => audio?.setLayers?.(layersForTier(audience.tier));
   const view = {
     async showOpening(text) {
       hud.show(false);
@@ -31,6 +33,7 @@ export async function startGame({ stage, cards, audience, ui, params, audio = nu
     async hud(game) {
       await audience.setBelievers(game.believers, { animate: false });
       hud.setPopulation(game.population); hud.set(game); hud.show(true);
+      syncMusic();
     },
     async dealRound(symbols, target, correct, { fate }) {
       stage.setMonitorSymbol(target);
@@ -57,6 +60,7 @@ export async function startGame({ stage, cards, audience, ui, params, audio = nu
       await Promise.all([audience.cheer(), hud.count(game)]);
       if (fate) return; // クリア演出へ
       await Promise.all([cards.unfocus(), audience.setBelievers(game.believers)]);
+      syncMusic();
     },
     async showMiss(game, index, correct, left, { fate }) {
       if (!fate) await cards.focus(index);
@@ -66,6 +70,7 @@ export async function startGame({ stage, cards, audience, ui, params, audio = nu
       const before = game.believers + left;
       await Promise.all([audience.leave(before ? left / before : 1), hud.count(game)]);
       await Promise.all([cards.unfocus(), audience.setBelievers(Math.max(game.believers, 1))]);
+      syncMusic();
     },
     async showClear() {
       hud.show(false);

@@ -20,7 +20,7 @@ it('lists are big enough', () => {
   expect(FEMALE.length).toBeGreaterThanOrEqual(20);
   expect(JOBS.length).toBeGreaterThanOrEqual(20);
 });
-it('game over text by gender', () => {
-  expect(gameOverText('m')).toBe('彼の記録も記憶も、誰も持っていなかった。');
-  expect(gameOverText('f')).toBe('彼女の記録も記憶も、誰も持っていなかった。');
+it('game over text', () => {
+  expect(gameOverText('m')).toBe('その後、人口が1人減ったが誰も気づかなかった。');
+  expect(gameOverText('f')).toBe('その後、人口が1人減ったが誰も気づかなかった。');
 });

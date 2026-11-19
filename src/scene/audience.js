@@ -24,6 +24,46 @@ function seatLayout() {
   return seats.slice(0, MAX_FIGURES);
 }
 
+// 黒い仮面に、赤く光る目をひとつだけ書き殴る。球のUVで正面(+z)は u=0.25
+function scrawledEyeTexture() {
+  const c = document.createElement('canvas'); c.width = 512; c.height = 256;
+  const g = c.getContext('2d');
+  g.fillStyle = '#000'; g.fillRect(0, 0, 512, 256);
+  const cx = 128, cy = 118;
+  const jitter = (v, a) => v + (Math.random() - 0.5) * a;
+  g.lineCap = 'round'; g.lineJoin = 'round';
+  // 目の輪郭を何度もなぞって書き殴る
+  for (let pass = 0; pass < 7; pass++) {
+    g.strokeStyle = `rgba(255,${20 + Math.random() * 30},${20 + Math.random() * 20},${0.55 + Math.random() * 0.45})`;
+    g.lineWidth = 2 + Math.random() * 3.5;
+    g.beginPath();
+    const w = jitter(46, 10), h = jitter(20, 7), tilt = (Math.random() - 0.5) * 0.25;
+    for (let i = 0; i <= 40; i++) {
+      const a = (i / 40) * Math.PI * 2 + pass * 0.3;
+      const x = cx + Math.cos(a) * w + Math.sin(a) * h * tilt, y = cy + Math.sin(a) * h * (Math.cos(a) > 0 ? 1 : 1.15);
+      i ? g.lineTo(jitter(x, 4), jitter(y, 4)) : g.moveTo(x, y);
+    }
+    g.stroke();
+  }
+  // ぐるぐる塗りつぶした瞳
+  g.strokeStyle = '#ff2a1a';
+  for (let i = 0; i < 26; i++) {
+    g.lineWidth = 1.5 + Math.random() * 2.5;
+    g.beginPath(); g.arc(jitter(cx, 5), jitter(cy, 4), 3 + Math.random() * 12, Math.random() * 6, Math.random() * 6 + 3); g.stroke();
+  }
+  g.fillStyle = '#ffd0b0'; g.beginPath(); g.arc(cx + 2, cy - 1, 3, 0, Math.PI * 2); g.fill();
+  // 下へ垂れる線
+  for (let i = 0; i < 4; i++) {
+    g.strokeStyle = `rgba(230,10,10,${0.4 + Math.random() * 0.4})`; g.lineWidth = 1.5 + Math.random() * 2;
+    let x = jitter(cx, 60), y = cy + 18;
+    g.beginPath(); g.moveTo(x, y);
+    for (let k = 0; k < 6; k++) { y += 6 + Math.random() * 10; g.lineTo(jitter(x, 3), y); }
+    g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
 function windowTexture() {
   const c = document.createElement('canvas'); c.width = 128; c.height = 512;
   const g = c.getContext('2d'); g.fillStyle = '#000'; g.fillRect(0, 0, 128, 512);
@@ -68,8 +108,9 @@ export function createAudience(stage) {
   const seats = seatLayout();
   const bodyGeo = new THREE.CapsuleGeometry(0.17, 0.34, 4, 10);
   const bodyMat = new THREE.MeshStandardMaterial({ color: 0x2b2b35, roughness: 0.85 });
-  const maskGeo = new THREE.SphereGeometry(0.13, 20, 14);
-  const maskMat = new THREE.MeshStandardMaterial({ color: 0xe9e6df, roughness: 0.22, metalness: 0.05 });
+  const maskGeo = new THREE.SphereGeometry(0.13, 32, 20);
+  const eyeTex = scrawledEyeTexture();
+  const maskMat = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.18, metalness: 0.3, emissive: 0xff1a10, emissiveMap: eyeTex, emissiveIntensity: 2.2 });
   const bodies = new THREE.InstancedMesh(bodyGeo, bodyMat, MAX_FIGURES);
   const masks = new THREE.InstancedMesh(maskGeo, maskMat, MAX_FIGURES);
   bodies.castShadow = true;
@@ -150,6 +191,8 @@ export function createAudience(stage) {
       n++;
     }
     bodies.count = masks.count = n;
+    // 目の光がじわりと脈打ち、ときどき一斉にまたたく
+    maskMat.emissiveIntensity = 1.8 + Math.sin(t * 2.1) * 0.5 + (Math.sin(t * 13.7) > 0.985 ? -1.6 : 0);
     bodies.instanceMatrix.needsUpdate = masks.instanceMatrix.needsUpdate = true;
 
     crowdShown += (crowdTarget - crowdShown) * Math.min(1, dt * 3);

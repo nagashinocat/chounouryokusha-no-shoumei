@@ -17,6 +17,6 @@ export function makeChallenger(number, pick = randomIndex) {
   return { number, name, age, job, gender, label };
 }
 
-export function gameOverText(gender) {
-  return `${gender === 'f' ? '彼女' : '彼'}の記録も記憶も、誰も持っていなかった。`;
+export function gameOverText() {
+  return 'その後、人口が1人減ったが誰も気づかなかった。';
 }

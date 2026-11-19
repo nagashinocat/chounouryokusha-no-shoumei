@@ -1,33 +1,49 @@
 // すべて WebAudio で合成する(外部の音声ファイルなし)。
 
-// オリジナルの子守歌風の旋律(イ短調・3拍子)。[音, 拍, 低音]
-export const MUSIC_BOX_MELODY = [
-  ['E5', 1, 'A3'], ['A5', 1], ['C6', 1],
-  ['B5', 2, 'E3'], ['A5', 1],
-  ['G#5', 1, 'E3'], ['A5', 1], ['B5', 1],
-  ['E5', 3, 'A3'],
-  ['F5', 1, 'D3'], ['A5', 1], ['D6', 1],
-  ['C6', 2, 'A3'], ['B5', 1],
-  ['A5', 1, 'D3'], ['G#5', 1], ['F5', 1],
-  ['E5', 3, 'E3'],
-  ['C6', 1, 'A3'], ['B5', 1], ['A5', 1],
-  ['D6', 2, 'F3'], ['C6', 1],
-  ['B5', 1, 'E3'], ['A5', 1], ['G#5', 1],
-  ['A5', 3, 'A3'],
-  [null, 3],
+// ボイスメモの鼻歌を書き起こした旋律(123BPM、8分音符単位)。[開始ステップ, MIDI, 長さ]
+// 歌った音を2オクターブ上げてオルゴールの音域にしている。8小節でループ。
+const SUNG = [
+  [1, 62], [2, 63], [4, 57], [5, 62], [6, 61], [8, 56], [9, 61], [10, 60],
+  [12, 56], [13, 58], [14, 59], [15, 58], [16, 57], [17, 55], [18, 53], [20, 53], [21, 55], [22, 56],
+  [24, 55], [25, 53], [26, 51], [28, 50], [29, 52],
+  [32, 57], [33, 64], [34, 63], [36, 59], [37, 64], [38, 63], [40, 58], [41, 63], [42, 62],
+  [44, 57], [45, 59], [46, 60], [47, 58], [48, 57], [49, 56], [50, 53], [52, 53], [53, 55], [54, 56],
+  [56, 56], [57, 54], [58, 52], [59, 52], [60, 51], [61, 52], [62, 53],
 ];
-const NOTE = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
-export function noteFreq(name) {
-  const m = /^([A-G])(#?)(\d)$/.exec(name);
-  const midi = 12 * (Number(m[3]) + 1) + NOTE[m[1]] + (m[2] ? 1 : 0);
-  return 440 * Math.pow(2, (midi - 69) / 12);
+export const LOOP_STEPS = 64;
+export const STEP_SEC = 60 / 123 / 2;
+export const MELODY = SUNG.map(([st, m], i) => {
+  const next = i + 1 < SUNG.length ? SUNG[i + 1][0] : LOOP_STEPS;
+  return [st, m + 24, Math.min(next - st, 2) || 2];
+});
+const melodyAt = new Map(MELODY.map((e) => [e[0], e]));
+const midiFreq = (m) => 440 * Math.pow(2, (m - 69) / 12);
+
+// 信者が増えると楽器が増える。1つ目は必ずバスドラ「ダン、ダダん」
+export function layersForTier(tier) { return ['room', 'theater', 'stadium', 'city', 'earth'].indexOf(tier); }
+export function eventsAt(step, layers) {
+  const s = ((step % LOOP_STEPS) + LOOP_STEPS) % LOOP_STEPS, ev = [];
+  const mel = melodyAt.get(s);
+  if (mel) ev.push({ inst: 'box', midi: mel[1], len: mel[2] });
+  if (layers >= 1 && [0, 4, 5].includes(s % 8)) ev.push({ inst: 'kick' });
+  const barLow = () => Math.min(...MELODY.filter(([st]) => st >= s && st < s + 8).map(([, m]) => m), 99);
+  if (layers >= 2 && s % 4 === 0) {
+    // 直前までで最後に鳴った旋律の音の2オクターブ下(歌った高さの1オクターブ下)
+    const last = [...MELODY].reverse().find(([st]) => st <= s) ?? MELODY.at(-1);
+    ev.push({ inst: 'bass', midi: last[1] - 36, len: 4 });
+  }
+  if (layers >= 3 && s % 8 === 0) { const r = barLow(); if (r < 99) ev.push({ inst: 'pad', midi: r - 36, len: 8 }); }
+  if (layers >= 4 && s % 16 === 0) { const r = barLow(); if (r < 99) ev.push({ inst: 'choir', midi: r - 24, len: 16 }); }
+  return ev;
 }
-export function createAudio(storage, nav = globalThis.navigator) {
+
+export function createAudio(storage, nav = globalThis.navigator, { context = null } = {}) {
   let ctx = null, master = null;
   let muted = storage?.get('cm.muted') === '1';
 
   function ensure() {
     if (ctx) return ctx;
+    if (context) { ctx = context; master = ctx.createGain(); master.gain.value = 0.9; master.connect(ctx.destination); return ctx; }
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return null;
     ctx = new AC();
@@ -99,7 +115,7 @@ export function createAudio(storage, nav = globalThis.navigator) {
     return b;
   }
   // オルゴールの歯：基音＋金属っぽい倍音、鋭い立ち上がりと長い減衰
-  function plink(freq, t, vel = 1) {
+  function plink(freq, t, vel, dest) {
     const cents = (Math.random() - 0.5) * 22; // ねじが緩んだような音程の揺れ
     const f = freq * Math.pow(2, cents / 1200);
     for (const [mul, amp, dec] of [[1, 0.5, 1.9], [3.01, 0.12, 0.7], [5.93, 0.05, 0.25]]) {
@@ -108,36 +124,105 @@ export function createAudio(storage, nav = globalThis.navigator) {
       g.gain.setValueAtTime(0.0001, t);
       g.gain.exponentialRampToValueAtTime(amp * vel, t + 0.003);
       g.gain.exponentialRampToValueAtTime(0.0001, t + dec);
-      o.connect(g).connect(box.in); o.start(t); o.stop(t + dec + 0.05);
+      o.connect(g).connect(dest); o.start(t); o.stop(t + dec + 0.05);
     }
   }
+  function kick(t, dest) {
+    const o = ctx.createOscillator(); o.type = 'sine';
+    o.frequency.setValueAtTime(130, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.22);
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(1, t + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.45);
+    o.connect(g).connect(dest); o.start(t); o.stop(t + 0.5);
+    // スマホのスピーカーでも聞こえるよう、打った瞬間の「ドッ」を足す
+    const c = ctx.createOscillator(); c.type = 'triangle';
+    c.frequency.setValueAtTime(260, t); c.frequency.exponentialRampToValueAtTime(90, t + 0.05);
+    const cg = ctx.createGain(); cg.gain.setValueAtTime(0.0001, t);
+    cg.gain.exponentialRampToValueAtTime(0.35, t + 0.002); cg.gain.exponentialRampToValueAtTime(0.0001, t + 0.07);
+    c.connect(cg).connect(dest); c.start(t); c.stop(t + 0.1);
+  }
+  function bass(freq, t, dur, dest) {
+    const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.value = freq;
+    const o2 = ctx.createOscillator(); o2.type = 'sawtooth'; o2.frequency.value = freq * 1.003;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 520;
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.45, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    const g2 = ctx.createGain(); g2.gain.value = 0.25;
+    o.connect(lp); o2.connect(g2).connect(lp); lp.connect(g).connect(dest);
+    o.start(t); o2.start(t); o.stop(t + dur + 0.05); o2.stop(t + dur + 0.05);
+  }
+  function pad(freq, t, dur, dest) {
+    // 少しずつずらしたのこぎり波を重ね、暗く濁った弦の響きにする
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900;
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.13, t + dur * 0.35); g.gain.exponentialRampToValueAtTime(0.0001, t + dur * 1.05);
+    lp.connect(g).connect(dest);
+    for (const [mul, det] of [[1, -7], [1, 6], [1.5, 3], [2, -4]]) {
+      const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = freq * mul; o.detune.value = det;
+      o.connect(lp); o.start(t); o.stop(t + dur * 1.1);
+    }
+  }
+  function choir(freq, t, dur, dest) {
+    // 「あー」の声の響き(ホルマント)を3つの帯域で作る
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(1.1, t + dur * 0.4); g.gain.exponentialRampToValueAtTime(0.0001, t + dur * 1.05);
+    g.connect(dest);
+    const src = [];
+    for (const [mul, det] of [[1, -9], [1, 8], [1.5, 0]]) {
+      const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = freq * mul; o.detune.value = det; src.push(o);
+    }
+    for (const [fr, q, amp] of [[800, 8, 1], [1150, 9, 0.6], [2900, 12, 0.25]]) {
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = fr; bp.Q.value = q;
+      const ag = ctx.createGain(); ag.gain.value = amp;
+      for (const o of src) o.connect(bp);
+      bp.connect(ag).connect(g);
+    }
+    for (const o of src) { o.start(t); o.stop(t + dur * 1.1); }
+  }
+
+  const LEVELS = { box: 0.55, kick: 0.9, bass: 0.6, pad: 0.7, choir: 0.6 };
+  let layers = 0;
   function startBgm() {
     if (box || !ensure()) return;
     const out = ctx.createGain(); out.gain.value = 0; out.connect(master);
-    out.gain.linearRampToValueAtTime(0.32, ctx.currentTime + 2);
-    const inp = ctx.createGain();
-    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 5200;
-    const dry = ctx.createGain(); dry.gain.value = 0.55;
+    out.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 2);
     const verb = ctx.createConvolver(); verb.buffer = impulse();
-    const wet = ctx.createGain(); wet.gain.value = 0.6;
-    inp.connect(lp); lp.connect(dry).connect(out); lp.connect(verb); verb.connect(wet).connect(out);
-    box = { in: inp, out, next: ctx.currentTime + 0.3, i: 0, loop: 0 };
+    const wet = ctx.createGain(); wet.gain.value = 0.5; verb.connect(wet).connect(out);
+    const bus = {};
+    for (const [name, lv] of Object.entries(LEVELS)) {
+      const g = ctx.createGain(); g.gain.value = name === 'box' ? lv : 0;
+      g.connect(out);
+      const send = ctx.createGain(); send.gain.value = name === 'kick' ? 0.15 : 0.7; g.connect(send).connect(verb);
+      bus[name] = g;
+    }
+    box = { bus, next: ctx.currentTime + 0.3, step: 0 };
+    applyLayers(true);
     const tick = () => schedule(1.2);
     if (typeof window.setInterval === 'function') box.timer = window.setInterval(tick, 250);
     tick();
+  }
+  function applyLayers(instant = false, at = null) {
+    if (!box) return;
+    ['kick', 'bass', 'pad', 'choir'].forEach((n, i) => {
+      const target = layers > i ? LEVELS[n] : 0;
+      const p = box.bus[n].gain;
+      if (instant) p.value = target; else p.setTargetAtTime(target, at ?? ctx.currentTime, 0.8);
+    });
   }
   function schedule(ahead) {
     if (!box) return;
     const until = ctx.currentTime + ahead;
     while (box.next < until) {
-      const [note, beats, bass] = MUSIC_BOX_MELODY[box.i];
-      // 回るたびに少しずつ遅くなり、ぜんまいが切れかけたように揺れる
-      const beat = (0.46 + box.loop * 0.015) * (1 + (Math.random() - 0.5) * 0.06);
-      if (note) plink(noteFreq(note), box.next, 0.9 + Math.random() * 0.2);
-      if (bass) plink(noteFreq(bass), box.next + 0.01, 0.45);
-      box.next += beats * beat;
-      box.i = (box.i + 1) % MUSIC_BOX_MELODY.length;
-      if (box.i === 0) { box.loop = (box.loop + 1) % 6; box.next += 1.2; }
+      const t = box.next;
+      for (const e of eventsAt(box.step, layers)) {
+        const dur = (e.len ?? 1) * STEP_SEC;
+        if (e.inst === 'box') plink(midiFreq(e.midi), t, 0.85 + Math.random() * 0.3, box.bus.box);
+        else if (e.inst === 'kick') kick(t, box.bus.kick);
+        else if (e.inst === 'bass') bass(midiFreq(e.midi), t, dur * 0.9, box.bus.bass);
+        else if (e.inst === 'pad') pad(midiFreq(e.midi), t, dur, box.bus.pad);
+        else if (e.inst === 'choir') choir(midiFreq(e.midi), t, dur, box.bus.choir);
+      }
+      box.next += STEP_SEC;
+      box.step = (box.step + 1) % LOOP_STEPS;
     }
   }
 
@@ -154,6 +239,8 @@ export function createAudio(storage, nav = globalThis.navigator) {
       }
     },
     bgm(on) { if (on) startBgm(); },
+    setLayers(n, at = null) { layers = Math.max(0, Math.min(4, n)); applyLayers(false, at); },
+    _schedule: (ahead) => schedule(ahead),
     _tick(sec) { if (ctx) { const t = ctx.currentTime; for (let x = 0; x <= sec; x += 0.25) { ctx.currentTime = t + x; schedule(1.2); } } },
     play(name) { if (!ensure() || muted) return; try { sounds[name]?.(); } catch {} },
     get muted() { return muted; },

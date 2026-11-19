@@ -28,19 +28,33 @@ function fakeAC() {
   return { AC, started };
 }
 
-it('bgm is a music box: plinked notes from the melody, looping', async () => {
-  const { AC, started } = fakeAC();
-  globalThis.window = { AudioContext: AC };
-  const { createAudio, MUSIC_BOX_MELODY, noteFreq } = await import('../src/audio.js');
-  const a = createAudio(null);
-  a.bgm(true);
-  a._tick(40); // 40秒ぶん先まで並べる
-  // 音程はわざと少し揺らしているので ±1.5% で照合する
-  const melodyFreqs = MUSIC_BOX_MELODY.filter((n) => n[0] != null).map(([n]) => noteFreq(n));
-  const fund = started.filter((s) => melodyFreqs.some((f) => Math.abs(s.f / f - 1) < 0.015));
-  expect(fund.length).toBeGreaterThan(MUSIC_BOX_MELODY.length); // 1周以上鳴っている
-  expect(new Set(fund.map((s) => s.t)).size).toBe(fund.length); // 同じ時刻に旋律の音を二重に鳴らさない
-  delete globalThis.window;
+it('the score loops 8 bars of the voice-memo melody in music-box register', async () => {
+  const { MELODY, LOOP_STEPS } = await import('../src/audio.js');
+  expect(LOOP_STEPS).toBe(64); // 8小節 × 8分音符8つ
+  for (const [step, midi, len] of MELODY) {
+    expect(step).toBeGreaterThanOrEqual(0); expect(step).toBeLessThan(64);
+    expect(midi).toBeGreaterThanOrEqual(72); expect(midi).toBeLessThanOrEqual(91);
+    expect(len).toBeGreaterThan(0);
+  }
+  // 書き起こしの頭と終わり(ボイスメモの音を2オクターブ上げたもの)
+  expect(MELODY[0]).toEqual([1, 62 + 24, 1]);
+  expect(MELODY.at(-1)).toEqual([62, 53 + 24, 2]);
+  expect(MELODY.length).toBe(49);
+});
+
+it('layers add instruments; the first added is a kick going "dan, da-dan"', async () => {
+  const { eventsAt } = await import('../src/audio.js');
+  const insts = (layers) => new Set(Array.from({ length: 64 }, (_, i) => eventsAt(i, layers)).flat().map((e) => e.inst));
+  expect([...insts(0)]).toEqual(['box']);
+  expect([...insts(1)].sort()).toEqual(['box', 'kick']);
+  expect(insts(2).size).toBe(3); expect(insts(3).size).toBe(4); expect(insts(4).size).toBe(5);
+  const kicks = Array.from({ length: 8 }, (_, i) => eventsAt(i, 1).some((e) => e.inst === 'kick'));
+  expect(kicks).toEqual([true, false, false, false, true, true, false, false]); // ダン、 ダダん
+});
+
+it('tiers map to layers', async () => {
+  const { layersForTier } = await import('../src/audio.js');
+  expect(['room', 'theater', 'stadium', 'city', 'earth'].map(layersForTier)).toEqual([0, 1, 2, 3, 4]);
 });
 
 it('unlocks on touchend and click (iOS needs a finished tap), playing a silent buffer', async () => {
