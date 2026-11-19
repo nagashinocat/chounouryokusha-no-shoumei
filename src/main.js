@@ -43,7 +43,10 @@ async function boot() {
     window.__debug.ready = true;
     return;
   }
-  const [{ startGame }, { shareFromResult }] = await Promise.all([import('./app.js'), import('./share.js')]);
-  startGame({ stage, cards, audience, ui, params, share: shareFromResult });
+  const [{ startGame }, { shareFromResult }, { createAudio, mountMuteButton }, { createStorage }] = await Promise.all([
+    import('./app.js'), import('./share.js'), import('./audio.js'), import('./storage.js')]);
+  const audio = createAudio(createStorage());
+  mountMuteButton(ui, audio);
+  startGame({ stage, cards, audience, ui, params, audio, share: shareFromResult });
 }
 boot();

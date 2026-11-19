@@ -82,3 +82,21 @@ it('target is on the card that carries it', async () => {
   expect(symbols[correct]).toBe(target);
   expect(new Set(symbols).size).toBe(4);
 });
+
+it('plays sounds: cheer on hit, leave on miss, heartbeat on fate', async () => {
+  const played = [];
+  const audio = { play: (n) => played.push(n) };
+  const mk = (rig, population) => {
+    const storage = createStorage(mem());
+    const backend = { getCount: async () => 8_200_000_000 - (population ?? 8_200_000_000), increment: async () => 1 };
+    return createFlow({ counter: createCounter({ backend, storage }), storage, view: fakeView(), rig, pick: () => 0, audio });
+  };
+  await mk('miss').start();
+  expect(played.filter(n => n === 'leave').length).toBe(4);
+  expect(played).toContain('blackout');
+  played.length = 0;
+  await mk('rig', 100).start();
+  expect(played.filter(n => n === 'cheer').length).toBe(3);
+  expect(played).toContain('heartbeat');
+  expect(played).toContain('clear');
+});
