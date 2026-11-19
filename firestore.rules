@@ -1,0 +1,25 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function playerPath() { return /databases/$(database)/documents/players/$(request.auth.uid); }
+    function counterPath() { return /databases/$(database)/documents/meta/vanished; }
+
+    match /meta/vanished {
+      allow read: if true;
+      allow update: if request.auth != null
+        && request.resource.data.keys().hasOnly(['count'])
+        && request.resource.data.count == resource.data.count + 1
+        && getAfter(playerPath()).data.lastAt == request.time
+        && (!exists(playerPath()) || get(playerPath()).data.lastAt < request.time - duration.value(30, 's'));
+    }
+
+    match /players/{uid} {
+      allow create, update: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['lastAt'])
+        && request.resource.data.lastAt == request.time
+        && getAfter(counterPath()).data.count == get(counterPath()).data.count + 1;
+    }
+
+    match /{document=**} { allow read, write: if false; }
+  }
+}
