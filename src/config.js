@@ -1,5 +1,6 @@
 export const BASE_POPULATION = 8_200_000_000;
 export const START_BELIEVERS = 4;
+export const MAX_MISSES = 16; // 16回外したらゲームオーバー
 export const SYMBOLS = ['circle', 'plus', 'wave', 'star'];
 
 // Firebase の設定値。README の手順で書き換える。プレースホルダのままなら共有カウンターは使わない。

@@ -3,7 +3,7 @@ import { createGame, applyGuess, isFateRound } from '../src/rules.js';
 
 describe('rules', () => {
   it('starts with 4 believers', () => {
-    expect(createGame({ population: 100 })).toEqual({ believers: 4, streak: 0, maxStreak: 0, rounds: 0, population: 100, status: 'playing' });
+    expect(createGame({ population: 100 })).toEqual({ believers: 4, streak: 0, maxStreak: 0, rounds: 0, misses: 0, population: 100, status: 'playing' });
   });
   it('hit multiplies by 4', () => {
     const g = applyGuess(createGame({ population: 1000 }), true);
@@ -45,5 +45,27 @@ describe('rules', () => {
     g = applyGuess(g, true);
     expect(g.status).toBe('cleared');
     expect(g.maxStreak).toBe(16);
+  });
+});
+
+describe('miss limit', () => {
+  it('counts misses and ends on the 16th even with believers left', () => {
+    let g = { ...createGame({ population: 8_200_000_000 }), believers: 10 ** 9 };
+    expect(g.misses).toBe(0);
+    for (let i = 0; i < 15; i++) g = applyGuess(g, false);
+    expect(g.misses).toBe(15);
+    expect(g.status).toBe('playing');
+    g = applyGuess(g, false);
+    expect(g.misses).toBe(16);
+    expect(g.status).toBe('over');
+    expect(g.believers).toBeGreaterThan(0);
+  });
+  it('hits do not count as misses', () => {
+    const g = applyGuess(createGame({ population: 1000 }), true);
+    expect(g.misses).toBe(0);
+  });
+  it('MAX_MISSES is 16', async () => {
+    const { MAX_MISSES } = await import('../src/config.js');
+    expect(MAX_MISSES).toBe(16);
   });
 });

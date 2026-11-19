@@ -1,3 +1,5 @@
+import { MAX_MISSES } from '../config.js';
+
 const fmt = (n) => Math.round(n).toLocaleString('en-US');
 
 export function rollNumber(el, from, to, duration = 600, suffix = '') {
@@ -23,7 +25,7 @@ export function createHud(ui) {
     <div class="hud-row"><span class="hud-label">信者</span><span class="hud-believers">4</span><span class="hud-unit">人</span>
       <span class="hud-streak" hidden>🔥<b>0</b>連続</span></div>
     <div class="hud-bar"><i></i></div>
-    <div class="hud-pop">世界人口 <span>8,200,000,000</span>人</div>`;
+    <div class="hud-sub"><span class="hud-lives"></span><span class="hud-pop">世界人口 <span>8,200,000,000</span>人</span></div>`;
   ui.appendChild(el);
   const red = document.createElement('div'); red.className = 'redflash'; ui.appendChild(red);
   const $ = (s) => el.querySelector(s);
@@ -39,14 +41,19 @@ export function createHud(ui) {
     setPopulation(p) { population = p; $('.hud-pop span').textContent = fmt(p); bar(shown); },
     set(game) {
       shown = game.believers; $('.hud-believers').textContent = fmt(game.believers); bar(game.believers);
-      this.streak(game.streak);
+      this.streak(game.streak); this.lives(game.misses);
     },
     async count(game) {
       const from = shown; shown = game.believers; bar(game.believers);
-      this.streak(game.streak);
+      this.streak(game.streak); this.lives(game.misses);
       el.classList.toggle('up', game.believers > from); el.classList.toggle('down', game.believers < from);
       await rollNumber($('.hud-believers'), from, game.believers, 550);
       el.classList.remove('up', 'down');
+    },
+    lives(misses) {
+      const left = MAX_MISSES - misses;
+      $('.hud-lives').innerHTML = `<i>${'●'.repeat(left)}</i><i class="lost">${'●'.repeat(misses)}</i>`;
+      $('.hud-lives').setAttribute('aria-label', `あと${left}回まで外せる`);
     },
     streak(s) { const st = $('.hud-streak'); st.hidden = s < 2; st.querySelector('b').textContent = s; },
     flashRed() { red.classList.remove('go'); void red.offsetWidth; red.classList.add('go'); },

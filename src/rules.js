@@ -1,7 +1,7 @@
-import { START_BELIEVERS } from './config.js';
+import { START_BELIEVERS, MAX_MISSES } from './config.js';
 
 export function createGame({ population }) {
-  return { believers: START_BELIEVERS, streak: 0, maxStreak: 0, rounds: 0, population, status: 'playing' };
+  return { believers: START_BELIEVERS, streak: 0, maxStreak: 0, rounds: 0, misses: 0, population, status: 'playing' };
 }
 
 export function isFateRound(game) {
@@ -21,5 +21,7 @@ export function applyGuess(game, hit) {
     };
   }
   const believers = Math.floor((game.believers * 3) / 4);
-  return { ...game, believers, streak: 0, rounds, status: believers <= 0 ? 'over' : 'playing' };
+  const misses = game.misses + 1;
+  const over = believers <= 0 || misses >= MAX_MISSES;
+  return { ...game, believers, misses, streak: 0, rounds, status: over ? 'over' : 'playing' };
 }
