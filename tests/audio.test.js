@@ -103,3 +103,36 @@ it('unlocks on touchend and click (iOS needs a finished tap), playing a silent b
   expect(nav2.audioSession.type).toBe('playback'); // iOS のマナーモードでも鳴らす
   delete globalThis.window;
 });
+
+it('when iOS interrupts the audio, it resumes by itself (no tap needed)', async () => {
+  let resumed = 0, ctxRef;
+  class AC { constructor() { ctxRef = this; this.state = 'running'; this.currentTime = 0; this.destination = {}; this.onstatechange = null; }
+    createGain() { return { gain: { value: 0 }, connect() {} }; } createBuffer() { return {}; } createBufferSource() { return { connect() {}, start() {} }; }
+    resume() { resumed++; this.state = 'running'; return Promise.resolve(); } }
+  globalThis.window = { AudioContext: AC, setTimeout: (f) => f() };
+  globalThis.document = { visibilityState: 'visible', addEventListener() {}, createElement: () => ({ play: () => Promise.resolve(), setAttribute() {}, style: {} }) };
+  const { createAudio } = await import('../src/audio.js');
+  const a = createAudio(null, {});
+  a.unlock();
+  const before = resumed;
+  ctxRef.state = 'interrupted'; ctxRef.onstatechange?.();
+  expect(resumed).toBe(before + 1);
+  delete globalThis.window; delete globalThis.document;
+});
+
+it('a silent looping <audio> keeps the iOS audio session alive', async () => {
+  const made = [];
+  class AC { constructor() { this.state = 'suspended'; this.currentTime = 0; this.destination = {}; }
+    createGain() { return { gain: { value: 0 }, connect() {} }; } createBuffer() { return {}; } createBufferSource() { return { connect() {}, start() {} }; }
+    resume() { this.state = 'running'; return Promise.resolve(); } }
+  globalThis.window = { AudioContext: AC };
+  globalThis.document = { visibilityState: 'visible', addEventListener() {}, createElement: (tag) => { const el = { tag, played: 0, play() { this.played++; return Promise.resolve(); }, setAttribute() {}, style: {} }; made.push(el); return el; } };
+  const { createAudio } = await import('../src/audio.js');
+  const a = createAudio(null, {});
+  a.unlock(); a.unlock();
+  const audios = made.filter((e) => e.tag === 'audio');
+  expect(audios.length).toBe(1);
+  expect(audios[0].loop).toBe(true);
+  expect(audios[0].played).toBeGreaterThanOrEqual(1);
+  delete globalThis.window; delete globalThis.document;
+});

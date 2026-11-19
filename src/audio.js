@@ -54,12 +54,35 @@ export function eventsAt(step, layers) {
   return ev;
 }
 
+// 0.5秒の無音WAV(8kHz・8bit・モノラル)
+const SILENT_WAV = (() => {
+  const n = 4000, b = new Uint8Array(44 + n), v = new DataView(b.buffer);
+  const w = (o, s) => [...s].forEach((c, i) => (b[o + i] = c.charCodeAt(0)));
+  w(0, 'RIFF'); v.setUint32(4, 36 + n, true); w(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true);
+  v.setUint16(22, 1, true); v.setUint32(24, 8000, true); v.setUint32(28, 8000, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true);
+  w(36, 'data'); v.setUint32(40, n, true); b.fill(128, 44);
+  let s = ''; for (const x of b) s += String.fromCharCode(x);
+  return 'data:audio/wav;base64,' + btoa(s);
+})();
+
 export function createAudio(storage, nav = globalThis.navigator, { context = null } = {}) {
-  let ctx = null, master = null;
+  let ctx = null, master = null, probeAn = null, keepAlive = null;
   let muted = storage?.get('cm.muted') === '1';
 
   function ensure() {
     if (ctx) return ctx;
+    if (!context) {
+      // iOS は通知やほかのアプリの音で WebAudio を「中断」する。戻れるときは自分で再開する
+      const AC0 = window.AudioContext || window.webkitAudioContext;
+      if (AC0) {
+        ctx = new AC0();
+        master = ctx.createGain(); master.gain.value = muted ? 0 : 0.9; master.connect(ctx.destination);
+        const revive = () => { if (ctx.state !== 'running' && (globalThis.document?.visibilityState ?? 'visible') === 'visible') { try { ctx.resume()?.catch?.(() => {}); } catch {} } };
+        ctx.onstatechange = revive;
+        globalThis.document?.addEventListener?.('visibilitychange', revive);
+        return ctx;
+      }
+    }
     if (context) { ctx = context; master = ctx.createGain(); master.gain.value = 0.9; master.connect(ctx.destination); return ctx; }
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return null;
@@ -248,6 +271,14 @@ export function createAudio(storage, nav = globalThis.navigator, { context = nul
     unlock() {
       // iOS のマナーモードでも鳴るようにする(Safari 17 以降)
       try { if (nav?.audioSession && nav.audioSession.type !== 'playback') nav.audioSession.type = 'playback'; } catch {}
+      // 無音の <audio> をくり返し流して、iOS が音声を止めにくくする(古い iOS ではマナーモード対策にもなる)
+      if (!keepAlive && globalThis.document?.createElement) {
+        try {
+          keepAlive = document.createElement('audio');
+          keepAlive.loop = true; keepAlive.setAttribute('playsinline', ''); keepAlive.src = SILENT_WAV;
+          keepAlive.play()?.catch?.(() => { keepAlive = null; });
+        } catch { keepAlive = null; }
+      } else if (keepAlive?.paused) { keepAlive.play()?.catch?.(() => {}); }
       if (!ensure()) return;
       if (ctx.state !== 'running') {
         try { ctx.resume(); } catch {}
@@ -263,6 +294,14 @@ export function createAudio(storage, nav = globalThis.navigator, { context = nul
     get muted() { return muted; },
     get state() { return ctx ? ctx.state : 'none'; },
     get bgmPlaying() { return !!box; },
+    // 調査用：いま実際に出ている音の大きさ(RMS)と、BGMの予定の進み
+    _probe() {
+      if (!ctx) return {};
+      if (!probeAn) { probeAn = ctx.createAnalyser(); probeAn.fftSize = 2048; master.connect(probeAn); }
+      const d = new Float32Array(probeAn.fftSize); probeAn.getFloatTimeDomainData(d);
+      let r = 0; for (const v of d) r += v * v;
+      return { t: +ctx.currentTime.toFixed(2), next: box ? +box.next.toFixed(2) : null, rms: +Math.sqrt(r / d.length).toFixed(4), master: master.gain.value };
+    },
     setMuted(m) {
       muted = m; storage?.set('cm.muted', m ? '1' : '0');
       if (master) master.gain.setTargetAtTime(m ? 0 : 0.9, ctx.currentTime, 0.05);
